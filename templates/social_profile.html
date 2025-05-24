@@ -1,0 +1,479 @@
+{#
+  social_profile.html
+  ------------------
+  Purpose: Main profile page for viewing a user's profile, matches, stats, and posts.
+  Usage: Used by the '/profile/<username>' route. Modern, mobile-first, card-based UI.
+  Context: Unified with social_base.html for consistent navigation and layout.
+#}
+{% extends "social_base.html" %}
+{% block title %}{{ user.first_name or user.username }}'s Profile - DoppleGanger{% endblock %}
+{% block extra_styles %}
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* Page-specific layout tweaks only. Move all shared styles to main.css */
+    .profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    .profile-avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 4px solid #850ff5;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+    .profile-name {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .profile-stats {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 10px;
+    }
+    .profile-stat {
+      color: #a484e6;
+      font-size: 1rem;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .profile-header {
+        margin-bottom: 18px;
+      }
+      .profile-avatar {
+        width: 80px;
+        height: 80px;
+      }
+      .profile-name {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+{% endblock %}
+{% block content %}
+  <div class="profile-header">
+    <img class="profile-avatar" src="{{ user.profile_image_url or url_for('static', filename='default_profile.png') }}" alt="Profile">
+    <div class="profile-name">{{ user.display_name or user.username }}</div>
+    <div class="profile-stats">
+      <div class="profile-stat"><b>{{ user.matches_count or 0 }}</b><br>Matches</div>
+      <div class="profile-stat"><b>{{ user.total_likes or 0 }}</b><br>Likes</div>
+      <div class="profile-stat"><b>{{ user.follower_count or 0 }}</b><br>Followers</div>
+    </div>
+  </div>
+
+  <!-- Debug Info (Only visible to profile owner) -->
+  {% if is_current_user %}
+  <div style="background-color: #f8f9fa; border: 1px solid #ddd; padding: 15px; margin: 20px auto; max-width: 768px; border-radius: 8px;">
+    <h4>Debug Information</h4>
+    <p>Number of profile_matches: {{ profile_matches|length if profile_matches else 0 }}</p>
+    {% if profile_matches %}
+      <ul>
+      {% for match in profile_matches %}
+        <li>
+          Match ID: {{ match.id }} | 
+          Name: {{ match.match_name }} | 
+          Decade: {{ match.decade }} | 
+          State: {{ match.state }} | 
+          Similarity: {{ match.similarity|round(1) }}% | 
+          Filename: {{ match.face_filename }} | 
+          Safe Path: {{ match.safe_image_path }}
+        </li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+  
+  <!-- =====================
+       Main Content
+  ====================== -->
+  <div class="profile-content">
+    <!-- Profile Info -->
+    <div class="profile-avatar-container">
+      <img src="{{ user_image_url or '/static/default_profile.png' }}" 
+           alt="{{ user.full_name or user.username }}" 
+           class="profile-avatar"> 
+      {% if is_current_user %}
+        <div class="avatar-upload" id="avatarUpload">
+          <i class="fas fa-camera"></i>
+          <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+        </div>
+      {% endif %}
+    </div>
+    
+    <div class="profile-info-container">
+      <div class="profile-name">{{ user.full_name or user.username }}</div>
+      <div class="profile-username">@{{ user.username }}</div>
+      {% if user.bio %}
+        <p class="profile-bio">{{ user.bio }}</p>
+      {% endif %}
+
+      {% if user.current_location_city or user.current_location_state or user.hometown %}
+        <div class="profile-location-details" style="margin-top: 12px;">
+          {% if user.current_location_city and user.current_location_state %}
+            <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8);"><i class="fas fa-map-marker-alt"></i> Lives in {{ user.current_location_city }}, {{ user.current_location_state }}</p>
+          {% elif user.current_location_city %}
+            <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8);"><i class="fas fa-map-marker-alt"></i> Lives in {{ user.current_location_city }}</p>
+          {% elif user.current_location_state %}
+            <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8);"><i class="fas fa-map-marker-alt"></i> Lives in {{ user.current_location_state }}</p>
+          {% endif %}
+          {% if user.hometown %}
+            <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8); margin-top: 4px;"><i class="fas fa-home"></i> From {{ user.hometown }}</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Profile Stats -->
+    <div class="profile-stats">
+      <div class="stat-item">
+        <strong>{{ (profile_matches|length) + (posts|default([])|length) }}</strong>
+        <span>Posts</span>
+      </div>
+      <div class="stat-item">
+        <strong>{{ user.followers_count|default(0) }}</strong>
+        <span>Followers</span>
+      </div>
+      <div class="stat-item">
+        <strong>{{ user.following_count|default(0) }}</strong>
+        <span>Following</span>
+      </div>
+    </div>
+    <div class="profile-meta">
+      {% if user.location %}
+        <div class="meta-item"><i class="fas fa-map-marker-alt"></i> {{ user.location }}</div>
+      {% endif %}
+      {% if user.website %}
+        <div class="meta-item"><i class="fas fa-link"></i> <a href="{{ user.website }}" target="_blank">Website</a></div>
+      {% endif %}
+      {% if user.joined_date %}
+        <div class="meta-item"><i class="fas fa-calendar-alt"></i> Joined {{ user.joined_date.strftime('%B %Y') }}</div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Matches Section -->
+  <h2 class="section-header">{% if is_current_user %}Your{% else %}{{ user.first_name or user.username }}'s{% endif %} Matches</h2>
+  <div class="matches-container">
+    <div class="matches-grid">
+      <div id="react-matches-root"></div>
+    </div>
+  </div>
+  
+  <!-- Recent Posts Section -->
+  <h2 class="section-header">Recent Posts</h2>
+  <div class="posts-container">
+    <div id="react-posts-root"></div>
+
+  </div>
+  
+  <!-- Post Creation Form -->
+  {% if is_current_user %}
+  <div class="post-creation-container" style="max-width: 768px; margin: 20px auto; padding: 0 16px;">
+    <form action="{{ url_for('social.create_post') }}" method="POST" class="post-form" style="background-color: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px;">
+      <div class="post-form-header" style="display: flex; align-items: center; margin-bottom: 16px;">
+        <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="{{ user.username }}" class="post-user-avatar" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover;"> 
+        <h3 style="font-size: 16px; font-weight: 600; color: var(--text-dark); margin: 0;">Post to {{ user.first_name or user.username }}'s Timeline</h3>
+      </div>
+      <input type="hidden" name="target_user_id" value="{{ user.id }}">
+      <textarea name="content" class="post-textarea" style="width: 100%; min-height: 100px; padding: 12px; border: 1px solid #e4e6eb; border-radius: 8px; resize: none; font-family: 'Source Sans Pro', sans-serif; font-size: 14px; margin-bottom: 16px;" placeholder="What's on your mind?"></textarea>
+      <div class="post-form-actions" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="post-form-attachments" style="display: flex; gap: 12px;">
+          <label for="post-image" style="cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; gap: 4px;">
+            <i class="fas fa-image"></i> Photo
+            <input type="file" id="post-image" name="image" accept="image/*" style="display: none;">
+          </label>
+          <span id="selected-file-name" style="font-size: 12px; color: var(--text-secondary);"></span>
+        </div>
+        <button type="submit" class="btn btn-primary post-submit-btn" style="padding: 8px 20px;">
+          <i class="fas fa-paper-plane"></i> Post
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- =====================
+       Scripts (AJAX, Modals, etc.)
+  ====================== -->
+  <script>
+    // Follow button AJAX
+    const followBtn = document.getElementById('followBtn');
+    if (followBtn) {
+      followBtn.addEventListener('click', function() {
+        const userId = followBtn.getAttribute('data-user-id');
+        const isFollowing = followBtn.getAttribute('data-following') === 'true';
+        const action = isFollowing ? 'unfollow' : 'follow';
+        
+        fetch(`/social/${action}/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            followBtn.setAttribute('data-following', (!isFollowing).toString());
+            if (isFollowing) {
+              followBtn.innerHTML = '<i class="fas fa-plus"></i> Follow';
+              // Update follower count
+              const followerCountEl = document.querySelector('.stat-item:nth-child(2) strong');
+              if (followerCountEl) {
+                const currentCount = parseInt(followerCountEl.innerText);
+                followerCountEl.innerText = currentCount - 1;
+              }
+            } else {
+              followBtn.innerHTML = '<i class="fas fa-user-minus"></i> Unfollow';
+              // Update follower count
+              const followerCountEl = document.querySelector('.stat-item:nth-child(2) strong');
+              if (followerCountEl) {
+                const currentCount = parseInt(followerCountEl.innerText);
+                followerCountEl.innerText = currentCount + 1;
+              }
+            }
+          } else {
+            console.error('Error updating follow status:', data.message);
+          }
+        })
+        .catch(err => console.error('AJAX error:', err));
+      });
+    }
+    
+    // Avatar upload
+    const avatarUpload = document.getElementById('avatarUpload');
+    const avatarInput = document.getElementById('avatarInput');
+    if (avatarUpload && avatarInput) {
+      avatarUpload.addEventListener('click', () => {
+        avatarInput.click();
+      });
+      
+      avatarInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.classList.add('preview-image');
+            img.style.width = '100px';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '50%';
+            img.style.border = '3px solid #fff';
+            img.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            
+            // Remove existing preview if any
+            const existingPreview = document.querySelector('.profile-avatar-container .preview-image');
+            if (existingPreview) {
+              existingPreview.remove();
+            }
+            
+            document.querySelector('.profile-avatar-container').appendChild(img);
+          }
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+    
+    // Add Match to Profile AJAX
+    const addMatchBtns = document.querySelectorAll('.add-match-to-profile-btn');
+    addMatchBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.getAttribute('data-user-id');
+        const isAdded = this.classList.contains('added-to-matches');
+        
+        fetch(`/social/${isAdded ? 'remove_match' : 'add_match'}/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            this.classList.toggle('added-to-matches');
+            this.innerHTML = isAdded ? '<i class="fas fa-bookmark"></i> Add to My Matches' : '<i class="fas fa-check"></i> Added to Matches';
+          } else {
+            console.error('Error updating matches:', data.message);
+          }
+        })
+        .catch(err => console.error('AJAX error:', err));
+      });
+    });
+    
+    // Share to Feed AJAX
+    const shareFeedBtns = document.querySelectorAll('.share-profile-to-feed-btn');
+    shareFeedBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const userId = this.getAttribute('data-user-id');
+        
+        fetch(`/social/share_to_feed/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('Profile shared to your feed!');
+          } else {
+            console.error('Error sharing to feed:', data.message);
+          }
+        })
+        .catch(err => console.error('AJAX error:', err));
+      });
+    });
+    
+    // Post creation AJAX
+    const postForm = document.querySelector('.post-form');
+    if (postForm) {
+      postForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const actionUrl = this.getAttribute('action');
+        
+        fetch(actionUrl, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(function(data) {
+          if (data.success) {
+            location.reload();
+          } else {
+            console.error('Error creating post:', data.message);
+          }
+        })
+        .catch(err => console.error('AJAX error:', err));
+      });
+    }
+    
+    // Like button AJAX
+    const likeButtons = document.querySelectorAll('.like-post-btn');
+    likeButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const postId = this.getAttribute('data-post-id');
+        const isLiked = this.classList.contains('liked');
+        
+        fetch(`/social/${isLiked ? 'unlike' : 'like'}/${postId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            this.classList.toggle('liked');
+            const likeCountEl = this.querySelector('.like-count');
+            let currentCount = parseInt(likeCountEl.innerText);
+            likeCountEl.innerText = isLiked ? currentCount - 1 : currentCount + 1;
+          } else {
+            console.error('Error updating like status:', data.message);
+          }
+        })
+        .catch(err => console.error('AJAX error:', err));
+      });
+    });
+    
+    // Comment button AJAX (toggle comments visibility)
+    const commentButtons = document.querySelectorAll('.comment-post-btn');
+    commentButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const postId = this.getAttribute('data-post-id');
+        const commentsContainer = document.querySelector(`.comments-container[data-post-id="${postId}"]`);
+        
+        if (commentsContainer) {
+          // Toggle visibility
+          const isVisible = commentsContainer.style.display === 'block';
+          commentsContainer.style.display = isVisible ? 'none' : 'block';
+          
+          if (!isVisible) {
+            // Load comments via AJAX if not already loaded
+            fetch(`/social/get_comments/${postId}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+              credentials: 'same-origin'
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                // Append comments to container
+                data.comments.forEach(comment => {
+                  const commentEl = document.createElement('div');
+                  commentEl.classList.add('comment-item');
+                  // Construct the profile URL using JavaScript
+                  const userProfileUrl = `/profile/${encodeURIComponent(comment.user.username)}`;
+                  commentEl.innerHTML = `
+                    <div class="comment-user">
+                      <img src="${comment.user.profile_image_url || '/static/images/default_profile.svg'}" alt="${comment.user.username}" class="comment-avatar" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; object-fit: cover;">
+                      <a href="${userProfileUrl}" class="comment-username">${comment.user.full_name || comment.user.username}</a>
+                    </div>
+                    <div class="comment-content" style="margin-left: 40px; margin-bottom: 12px;">
+                      ${comment.content}
+                    </div>
+                  `;
+                  commentsContainer.appendChild(commentEl);
+                });
+              } else {
+                console.error('Error loading comments:', data.message);
+              }
+            })
+            .catch(err => console.error('AJAX error:', err));
+          }
+        }
+      });
+    });
+  </script>
+
+<script type="module">
+  // Ensure React and ReactDOM are available, often via CDN or bundled
+  // If using a bundler like Vite/Webpack, these imports might be handled differently
+  // For this example, assuming direct import paths or global availability from your bundle
+  import React from 'https://esm.sh/react@18.2.0';
+  import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+
+  // IMPORTANT: Adjust the path to your bundled React components.
+  // This assumes MatchesSection and PostsSection are exported from 'profileComponents.js'
+  // which is generated by your frontend build process.
+  // If your components are in separate files or a different bundle, adjust accordingly.
+  // e.g. import MatchesSection from "{{ url_for('static', filename='js/MatchesSection.js') }}";
+  //      import PostsSection from "{{ url_for('static', filename='js/PostsSection.js') }}";
+  // For a single bundle exporting both:
+  // const { MatchesSection, PostsSection } = await import("{{ url_for('static', filename='js/profileComponents.js') }}");
+  // Using individual imports for clarity, assuming separate component files or specific exports
+  // Ensure these paths align with your build output in the static/js directory
+  const MatchesSectionModule = await import("{{ url_for('static', filename='js/MatchesSection.js') }}");
+  const PostsSectionModule = await import("{{ url_for('static', filename='js/PostsSection.js') }}");
+  const MatchesSection = MatchesSectionModule.default;
+  const PostsSection = PostsSectionModule.default;
+
+
+  const userId = {{ user.id | tojson }};
+  const username = {{ user.username | tojson }};
+  const isCurrentUser = {{ is_current_user | tojson }};
+
+  const matchesRootDiv = document.getElementById('react-matches-root');
+  if (matchesRootDiv) {
+    const matchesRoot = createRoot(matchesRootDiv);
+    matchesRoot.render(React.createElement(MatchesSection, { userId, username, isCurrentUser }));
+  } else {
+    console.error('React mount point #react-matches-root not found.');
+  }
+
+  const postsRootDiv = document.getElementById('react-posts-root');
+  if (postsRootDiv) {
+    const postsRoot = createRoot(postsRootDiv);
+    postsRoot.render(React.createElement(PostsSection, { userId, username, isCurrentUser }));
+  } else {
+    console.error('React mount point #react-posts-root not found.');
+  }
+</script>
+
+{% endblock %}

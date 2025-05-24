@@ -1,0 +1,9 @@
+.text {
+  color: #ffffff;
+  font-size: 12px;
+  font-family: 'Open Sans';
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  padding: 0 8px;
+}

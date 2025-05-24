@@ -1,0 +1,82 @@
+# Data directories
+data/db/*
+data/index/*
+!data/db/.gitkeep
+!data/index/.gitkeep
+
+# Database files
+*.db
+*.db-journal
+
+# FAISS and face recognition files
+*.index
+*.pkl
+*.h5
+*.pth
+*.pb
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Local development
+.env
+.env.local
+instance/
+
+# Static files
+static/uploads/*
+static/extracted_faces/*
+static/profile_pics/*
+static/covers/*
+static/sorted_faces/*
+static/faces/*
+!static/uploads/.gitkeep
+!static/extracted_faces/.gitkeep
+!static/profile_pics/.gitkeep
+!static/covers/.gitkeep
+!static/sorted_faces/.gitkeep
+
+# Additional face data locations
+/faces.db
+/dev.db
+/data/index/faces.index
+/data/index/faces_filenames.pkl
+
+# Node modules and build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/build/

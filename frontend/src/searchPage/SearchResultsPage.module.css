@@ -1,0 +1,280 @@
+.search-page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: Arial, sans-serif; /* Or your preferred font */
+  padding-top: 16px;
+}
+
+.mainLayout {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  max-width: 1200px; /* Match container max-width */
+  flex-grow: 1; /* Allow layout to take available height */
+  overflow: hidden; /* Hide overflow for the layout */
+}
+
+.mainLayoutVertical {
+  display: flex;
+  flex-direction: column; /* Arrange items vertically */
+  align-items: center; /* Center items horizontally */
+  padding: 24px; /* Add padding around the content */
+  width: 100%;
+  box-sizing: border-box; /* Include padding in width */
+  overflow-y: auto; /* Enable vertical scrolling for the entire content area */
+  /* Remove old debug borders */
+}
+
+.userCardSidebar {
+  position: sticky; /* Make it sticky */
+  top: 16px; /* Space from the top */
+  flex-shrink: 0; /* Prevent shrinking */
+  width: 300px; /* Set a fixed width for the sidebar */
+  padding-right: 20px; /* Space between sidebar and carousel */
+  box-sizing: border-box; /* Include padding in width */
+  overflow-y: auto; /* Allow scrolling if content is taller than viewport */
+  height: calc(100vh - 96px); /* Adjust height to fit viewport, considering navbar and padding */
+}
+
+.userCardWrapper {
+    width: 280px; /* Explicit width for the user card container */
+    margin: 0 auto 24px auto; /* Center and add margin below */
+}
+
+.matchesCarousel {
+  flex-grow: 1; /* Allow carousel to take remaining width */
+  overflow-x: auto; /* Enable horizontal scrolling */
+  overflow-y: hidden; /* Hide vertical overflow */
+  display: flex;
+  flex-direction: row; /* Arrange items horizontally */
+  gap: 20px; /* Space between match cards */
+  padding-bottom: 20px; /* Add some padding at the bottom for scrollbar */
+  /* Add padding to the sides if needed */
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.matchesVerticalList {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.matchCardWrapper {
+  flex-shrink: 0; /* Prevent cards from shrinking */
+}
+
+.matchCardWrapperVertical {
+    width: 280px;
+    margin: 0 auto 16px auto; /* Center and add margin below */
+}
+
+/* You can keep other global styles or add more specific ones here */
+/* For example, styles for the UniversalCard within this page */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.comparisonSection {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.userCardSection {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.matchCardSection {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+}
+
+.navigationButtons {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.navButton {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #1b74e4;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.navButton:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.navButton:hover:not(:disabled) {
+  background-color: #1557b5;
+}
+
+.additionalMatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.noMatches {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.matchCount {
+  font-size: 1rem;
+  color: #666;
+}
+
+.carouselSection {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.matchesCarousel {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 1rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.carouselCard {
+  flex: 0 0 auto;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.carouselCard:hover {
+  transform: translateY(-5px);
+}
+
+.activeCard {
+  position: relative;
+}
+
+.activeCard::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background-color: #1b74e4;
+  border-radius: 50%;
+}
+
+.loadingContainer,
+.errorContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.loadingSpinner {
+  color: #1b74e4;
+  font-size: 1.2rem;
+}
+
+.errorMessage {
+  color: #dc3545;
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.noMatches {
+  color: #666;
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar styling */
+.matchesCarousel::-webkit-scrollbar {
+  height: 8px;
+}
+
+.matchesCarousel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.matchesCarousel::-webkit-scrollbar-thumb {
+  background: #1b74e4;
+  border-radius: 4px;
+}
+
+.matchesCarousel::-webkit-scrollbar-thumb:hover {
+  background: #0a5dc7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .comparisonSection {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .userCardSection,
+  .matchCardSection {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 1rem;
+  }
+
+  .matchesCarousel {
+    gap: 0.5rem;
+  }
+}

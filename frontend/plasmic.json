@@ -1,0 +1,81 @@
+{
+  "platform": "react",
+  "code": {
+    "lang": "js",
+    "scheme": "blackbox",
+    "reactRuntime": "classic"
+  },
+  "style": {
+    "scheme": "css-modules",
+    "defaultStyleCssFilePath": "components/plasmic/plasmic__default_style.module.css"
+  },
+  "images": {
+    "scheme": "inlined",
+    "publicDir": "../public",
+    "publicUrlPrefix": "/static/"
+  },
+  "tokens": {
+    "scheme": "theo",
+    "tokensFilePath": "plasmic-tokens.theo.json"
+  },
+  "srcDir": "src",
+  "defaultPlasmicDir": "./plasmic",
+  "projects": [
+    {
+      "projectId": "dHSwXxarVuwBqeokqdW6ZS",
+      "projectApiToken": "SmjLjLhz6McOzzXitKBPrlpLTILzKdoad1wiNexdG6RJQrFkKQoeyyNI1qX0TIlkQ4VY0b8AN0vzrNkxy7MQ",
+      "projectName": "doppleganger",
+      "version": "latest",
+      "cssFilePath": "components/plasmic/doppleganger/plasmic.module.css",
+      "components": [
+        {
+          "id": "K2S7KpdHxsaX",
+          "name": "Homepage",
+          "type": "managed",
+          "projectId": "dHSwXxarVuwBqeokqdW6ZS",
+          "renderModuleFilePath": "components/plasmic/doppleganger/PlasmicHomepage.jsx",
+          "importSpec": {
+            "modulePath": "components/Homepage.jsx"
+          },
+          "cssFilePath": "components/plasmic/doppleganger/PlasmicHomepage.module.css",
+          "scheme": "blackbox",
+          "componentType": "page",
+          "path": "/"
+        }
+      ],
+      "icons": [],
+      "images": [],
+      "indirect": false,
+      "globalContextsFilePath": "",
+      "splitsProviderFilePath": "",
+      "codeComponents": [
+        {
+          "id": "h6bSrdX3zuIm",
+          "name": "PlasmicHead",
+          "displayName": "hostless-plasmic-head",
+          "componentImportPath": "@plasmicapp/react-web"
+        },
+        {
+          "id": "DP5FBiXE9hjI",
+          "name": "Fetcher",
+          "displayName": "plasmic-data-source-fetcher",
+          "componentImportPath": "@plasmicapp/react-web/lib/data-sources"
+        }
+      ],
+      "customFunctions": []
+    }
+  ],
+  "globalVariants": {
+    "variantGroups": [
+      {
+        "id": "uvTEJX8Uvt_X",
+        "name": "Screen",
+        "projectId": "dHSwXxarVuwBqeokqdW6ZS",
+        "contextFilePath": "components/plasmic/doppleganger/PlasmicGlobalVariant__Screen.jsx"
+      }
+    ]
+  },
+  "wrapPagesWithGlobalContexts": true,
+  "cliVersion": "0.1.338",
+  "$schema": "https://unpkg.com/@plasmicapp/cli@0.1.338/dist/plasmic.schema.json"
+}

@@ -1,0 +1,213 @@
+{#
+  feed.html
+  ---------
+  Purpose: DoppleGänger social feed page (posts, comments, matches).
+  Usage: Used by '/feed' route. Modern, mobile-first, card-based UI.
+  Context: Unified with social_base.html for consistent navigation and layout.
+#}
+{% extends "social_base.html" %}
+{% block title %}DoppleGänger Feed{% endblock %}
+{% block extra_styles %}
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* Page-specific layout tweaks only. Move all shared styles to main.css */
+    .feed-container {
+      margin-top: 16px;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0 8px 32px 8px;
+    }
+    @media (max-width: 600px) {
+      .feed-container {
+        max-width: 99vw;
+        padding: 0 2vw;
+      }
+    }
+    @media (max-width: 400px) {
+      .feed-container {
+        max-width: 99vw;
+        padding: 0 2vw;
+      }
+    }
+  </style>
+{% endblock %}
+{% block content %}
+  <div class="feed-container">
+    <!-- Post box -->
+    <div class="post-box">
+      <div class="avatar avatar-lg">
+        <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      </div>
+      <input type="text" id="newPostContent" placeholder="What’s on your mind?">
+      <button id="createPostBtn">Post</button>
+    </div>
+    {% if posts|length == 0 %}
+      <div style="text-align:center; color:#b9b9b9; margin-top:40px; font-size:18px;">No posts yet. Be the first to share something!</div>
+    {% endif %}
+    {% for post in posts %}
+    <div class="post-card">
+      <div class="post-header">
+        <div class="avatar">
+          <img src="{{ post.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        </div>
+        <div class="user-pill" style="background: var(--primary); color: #fff; width: 128px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 0 0 0; font-weight: 700; font-size: 15px; white-space: nowrap;">{{ post.username }}</div>
+        <div class="post-user-meta">
+          <div class="username">{{ post.username }}</div>
+          <div class="post-meta" data-date="{{ post.created_at }}"></div>
+        </div>
+      </div>
+      <div class="post-content">{{ post.content }}</div>
+      {% if post.face_filename %}
+      <div class="match-comparison">
+        <div class="face">
+          <div class="avatar">
+            <img src="{{ post.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          </div>
+          <div class="label" style="background: var(--primary); color: #fff; border-radius: 8px; padding: 2px 14px; margin-top: 6px; font-weight: 600; font-size: 14px; display: inline-block;">{{ post.username }}</div>
+        </div>
+        <div class="face">
+          <img src="/static/extracted_faces/{{ post.face_filename }}" alt="Match">
+          <div class="label" style="background: var(--primary); color: #fff; border-radius: 8px; padding: 2px 14px; margin-top: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Match</div>
+        </div>
+      </div>
+      <div class="match-meta">
+        {% if post.similarity %}<div class="meta-item">Similarity: <b>{{ post.similarity }}%</b></div>{% endif %}
+        {% if post.state %}<div class="meta-item">State: {{ post.state }}</div>{% endif %}
+        {% if post.decade %}<div class="meta-item">Decade: {{ post.decade }}</div>{% endif %}
+      </div>
+      {% endif %}
+      <div class="interaction-bar-container"><div class="stats-bar>
+  <button class="like-btn" data-post-id="{{ post.id }}" data-liked="{{ 'true' if post.user_has_liked else 'false' }}" style="background:none;border:none;padding:0 8px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;">
+  Like <span class="like-count">{{ post.likes_count if post.likes_count is defined else 0 }}</span>
+</button>
+</div><div class="interaction-bar">
+      </div></div></div>
+      <div class="comments-section" id="comments-{{ post.id }}">
+        {% for comment in post.comments %}
+        <div class="comment">
+          <div class="avatar avatar-sm">
+            <img src="{{ comment.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          </div>
+          <div class="comment-content"><b>{{ comment.username }}</b> {{ comment.content }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="add-comment-bar">
+        <div class="avatar avatar-sm">
+          <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        </div>
+        <input type="text" class="add-comment-input" placeholder="Add a comment..." data-post-id="{{ post.id }}">
+        <button class="add-comment-btn">Send</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+{% block extra_scripts %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+  <script>
+    // Format dates
+    document.querySelectorAll('.post-meta').forEach(el => {
+      const raw = el.dataset.date;
+      if (raw) {
+        const formatted = moment(raw, 'YYYY-MM-DD HH:mm:ss').fromNow();
+        el.textContent = formatted;
+      }
+    });
+    // Like button
+    document.querySelectorAll('.like-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const postId = btn.dataset.postId;
+        const isLiked = btn.dataset.liked === 'true';
+        const endpoint = isLiked ? `/api/posts/${postId}/unreact` : `/api/posts/${postId}/react`;
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reaction_type: 'like' })
+          });
+          if (response.ok) {
+            const data = await response.json();
+            btn.dataset.liked = (!isLiked).toString();
+            btn.querySelector('i').className = isLiked ? 'far fa-thumbs-up' : 'fas fa-thumbs-up';
+            btn.querySelector('.like-count').textContent = data.likes_count;
+          }
+        } catch (error) { console.error('Error toggling like:', error); }
+      });
+    });
+    // Comment button (toggle comments)
+    document.querySelectorAll('.comment-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const postId = btn.dataset.postId;
+        const section = document.getElementById('comments-' + postId);
+        if (section.style.display === 'none') {
+          // Fetch and show comments
+          const resp = await fetch(`/api/posts/${postId}/comments`);
+          if (resp.ok) {
+            const data = await resp.json();
+            section.innerHTML = data.comments.map(c => `
+              <div class='comment'>
+                <div class='avatar' style='background-image:url('${c.profile_image_url || '/static/default_profile.png'}') // already unified'></div>
+                <div class='comment-content'><b>${c.username}</b> ${c.content}</div>
+              </div>
+            `).join('');
+            section.style.display = 'block';
+          }
+        } else {
+          section.style.display = 'none';
+        }
+      });
+    });
+    // Add comment
+    document.querySelectorAll('.add-comment-bar').forEach(bar => {
+      const input = bar.querySelector('.add-comment-input');
+      const btn = bar.querySelector('.add-comment-btn');
+      btn.addEventListener('click', async () => {
+        const postId = input.dataset.postId;
+        const content = input.value.trim();
+        if (!content) return;
+        try {
+          const response = await fetch(`/api/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+          });
+          if (response.ok) {
+            input.value = '';
+            // Optionally refresh comments
+            document.querySelector(`.comment-btn[data-post-id='${postId}']`).click();
+          }
+        } catch (error) { console.error('Error adding comment:', error); }
+      });
+      input.addEventListener('keypress', (e) => { if (e.key === 'Enter') btn.click(); });
+    });
+    // Share button
+    document.querySelectorAll('.share-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const postId = btn.dataset.postId;
+        const url = `${window.location.origin}/posts/${postId}`;
+        if (navigator.share) {
+          navigator.share({ title: 'Check out this DoppleGänger match!', url });
+        } else {
+          navigator.clipboard.writeText(url).then(() => { alert('Link copied to clipboard!'); });
+        }
+      });
+    });
+    // Create post
+    document.getElementById('createPostBtn').addEventListener('click', async () => {
+      const content = document.getElementById('newPostContent').value.trim();
+      if (!content) return;
+      try {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        if (response.ok) location.reload();
+      } catch (error) { console.error('Error creating post:', error); }
+    });
+  </script>
+  <script src="{{ url_for('static', filename='js/matches_fix.js') }}"></script>
+{% endblock %

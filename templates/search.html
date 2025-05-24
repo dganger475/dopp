@@ -1,0 +1,135 @@
+{#
+  search.html
+  ----------
+  Purpose: Search page for finding Doppelganger matches.
+  Usage: Used by '/search' route. Modern, mobile-first, card-based UI.
+  Context: Unified with base.html for consistent navigation and layout.
+#}
+{% extends "base.html" %}
+{% block title %}Search Doppelgangers{% endblock %}
+{% block extra_styles %}
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    /* Page-specific overrides and layout tweaks only. Move all shared styles to main.css */
+    .search-center-container {
+      width: 100vw;
+      max-width: 420px;
+      margin: 62px auto 0 auto;
+      background: #181a20;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      padding: 18px 8px 24px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .search-main-layout {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      width: 100vw;
+      max-width: 100vw;
+      margin: 62px auto 0 auto;
+      min-height: 80vh;
+      box-sizing: border-box;
+      gap: 0;
+    }
+    @media (max-width: 900px) {
+      .search-main-layout {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .sticky-user-card {
+        position: static;
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto 12px auto;
+        border-radius: 12px;
+      }
+      .carousel-container {
+        padding-left: 0;
+        margin-left: 0;
+        min-height: 220px;
+      }
+    }
+    @media (max-width: 600px) {
+      .search-center-container {
+        padding: 8px 2vw 12px 2vw;
+        max-width: 99vw;
+      }
+      .result-card img {
+        width: 44px;
+        height: 44px;
+      }
+      .user-image img {
+        width: 44px;
+        height: 44px;
+      }
+      .results-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .search-main-layout {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .sticky-user-card {
+        position: static;
+        width: 100%;
+        max-width: 99vw;
+        margin: 0 auto 12px auto;
+        border-radius: 12px;
+      }
+      .carousel-container {
+        min-height: 180px;
+        gap: 10px;
+      }
+      .result-card {
+        width: 90vw;
+        min-width: 0;
+        max-width: 99vw;
+      }
+    }
+    @media (max-width: 400px) {
+      .search-center-container, .nav-content {
+        max-width: 99vw;
+      }
+      .result-card {
+        width: 98vw;
+        min-width: 0;
+      }
+    }
+  </style>
+{% endblock %}
+{% block content %}
+  <div class="search-main-layout">
+    <div class="sticky-user-card">
+      <!-- User card content: replace with actual user info as needed -->
+      <img src="{{ user_image_url or url_for('static', filename='images/default_profile.png') }}" alt="Your profile" style="width:64px;height:64px;border-radius:50%;border:2px solid #fff;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:1.1em;color:#fff;margin-bottom:2px;">{{ current_user.username if current_user.is_authenticated else 'Guest' }}</div>
+      <div style="font-size:0.95em;color:#b3b3b3;margin-bottom:6px;">Your Card</div>
+      <div style="background:#1b74e4;color:#fff;border-radius:9999px;padding:2px 12px;font-size:12px;font-weight:600;">Profile</div>
+    </div>
+    <div class="carousel-container">
+      {% if show_results and results %}
+        {% for face in results %}
+          <div class="result-card {{ 'registered-user-card' if face.is_registered else 'unclaimed' }}">
+            {% if face.is_registered %}
+              <div class="badge-top">REGISTERED USER</div>
+            {% else %}
+              <div class="badge-top badge-unclaimed">UNCLAIMED PROFILE</div>
+            {% endif %}
+            <img src="{{ ('/' + (face.safe_image_path|replace('\\', '/')|replace('\\\\', '/')|replace('\\', '/')).lstrip('/') ) if face.safe_image_path else url_for('static', filename='images/default_face.png') }}" alt="Face" onerror="this.closest('.result-card').style.display='none';">
+            <div class="user-pill">@{{ face.username if face.is_registered else 'UNCLAIMED' }}</div>
+            <div class="meta-box">Similarity: {{ (face.similarity * 100)|round(0) }}%</div>
+            <div class="meta-box">{{ (face.state ~ ' ' ~ face.decade) if face.state or face.decade else (face.location if face.is_registered else '') }}</div>
+          </div>
+        {% endfor %}
+      {% elif show_results %}
+        <div style="color:#aaa;font-size:1em;">Unable to find results. Please try again later.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+<!-- ...existing code for scripts, etc... -->

@@ -1,0 +1,520 @@
+import React from 'react';
+
+const styles = {
+  Header: {
+    top: '0px',
+    left: '0px',
+    width: '375px',
+    height: '80px',
+    backgroundColor: '#1b74e4',
+  },
+};
+
+const Header = (props) => {
+  return (
+    <div style={styles.Header}>
+      {props.children}
+    </div>
+  );
+};
+
+export default Header;
+import React from 'react';
+
+const styles = {
+  ImageContainer: {
+    top: '15px',
+    left: '20px',
+    width: '74px',
+    height: '48px',
+    borderRadius: '8px',
+    backgroundImage: 'url(./image.png)',
+    backgroundPosition: 'center center',
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+  },
+};
+
+const defaultProps = {
+  image: 'https://assets.api.uizard.io/api/cdn/stream/dfbff6fd-c9d2-4088-ae33-77cc19e203eb.png',
+}
+
+const Image = (props) => {
+  return (
+    <div style={{
+      ...styles.ImageContainer,
+      backgroundImage: `url(${props.image ?? defaultProps.image})`,
+    }} />
+  );
+};
+
+export default Image;
+import React from 'react';
+
+const styles = {
+  Icon: {
+    color: '#030303',
+    fill: '#030303',
+    fontSize: '23px',
+    top: '25px',
+    left: '114px',
+    width: '23px',
+    height: '28px',
+  },
+};
+
+const IconComponent = () => (
+  <svg style={styles.Icon}  viewBox="0 0 576 512">
+    <path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z">
+    </path>
+  </svg>
+);
+
+const defaultProps = {
+  IconComponent,
+};
+
+const Icon = (props) => {
+  return (
+    props.IconComponent 
+      ? <props.IconComponent style={styles.Icon} /> 
+      : <defaultProps.IconComponent />
+  );
+};
+
+export default Icon;
+import React from 'react';
+
+const styles = {
+  Icon: {
+    color: '#030303',
+    fill: '#030303',
+    fontSize: '20px',
+    top: '25px',
+    left: '174px',
+    width: '20px',
+    height: '28px',
+  },
+};
+
+const IconComponent = () => (
+  <svg style={styles.Icon}  viewBox="0 0 576 512">
+    <path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z">
+    </path>
+  </svg>
+);
+
+const defaultProps = {
+  IconComponent,
+};
+
+const Icon = (props) => {
+  return (
+    props.IconComponent 
+      ? <props.IconComponent style={styles.Icon} /> 
+      : <defaultProps.IconComponent />
+  );
+};
+
+export default Icon;
+import React from 'react';
+
+const styles = {
+  Icon: {
+    color: '#030303',
+    fill: '#030303',
+    fontSize: '18px',
+    top: '25px',
+    left: '234px',
+    width: '18px',
+    height: '28px',
+  },
+};
+
+const IconComponent = () => (
+  <svg style={styles.Icon}  viewBox="0 0 448 512">
+    <path d="M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z">
+    </path>
+  </svg>
+);
+
+const defaultProps = {
+  IconComponent,
+};
+
+const Icon = (props) => {
+  return (
+    props.IconComponent 
+      ? <props.IconComponent style={styles.Icon} /> 
+      : <defaultProps.IconComponent />
+  );
+};
+
+export default Icon;
+import React from 'react';
+
+const styles = {
+  Icon: {
+    color: '#030303',
+    fill: '#030303',
+    fontSize: '20px',
+    top: '26px',
+    left: '296px',
+    width: '20px',
+    height: '28px',
+  },
+};
+
+const IconComponent = () => (
+  <svg style={styles.Icon}  viewBox="0 0 496 512">
+    <path d="M248 8C111 8 0 119 0 256s111 248 248 248 248-111 248-248S385 8 248 8zm0 96c48.6 0 88 39.4 88 88s-39.4 88-88 88-88-39.4-88-88 39.4-88 88-88zm0 344c-58.7 0-111.3-26.6-146.5-68.2 18.8-35.4 55.6-59.8 98.5-59.8 2.4 0 4.8.4 7.1 1.1 13 4.2 26.6 6.9 40.9 6.9 14.3 0 28-2.7 40.9-6.9 2.3-.7 4.7-1.1 7.1-1.1 42.9 0 79.7 24.4 98.5 59.8C359.3 421.4 306.7 448 248 448z">
+    </path>
+  </svg>
+);
+
+const defaultProps = {
+  IconComponent,
+};
+
+const Icon = (props) => {
+  return (
+    props.IconComponent 
+      ? <props.IconComponent style={styles.Icon} /> 
+      : <defaultProps.IconComponent />
+  );
+};
+
+export default Icon;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#030303',
+    fontSize: '24px',
+    fontFamily: 'Open Sans',
+    fontWeight: 700,
+    lineHeight: '32px',
+    textAlign: 'center',
+  },
+};
+
+const defaultProps = {
+  text: 'Create Your Account',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#030303',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    fontWeight: 600,
+    lineHeight: '20px',
+  },
+};
+
+const defaultProps = {
+  text: 'Name',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Input: {
+    top: '232px',
+    left: '24px',
+    width: '327px',
+    height: '40px',
+    padding: '0px 8px',
+    border: '0',
+    boxSizing: 'border-box',
+    borderRadius: '6px',
+    backgroundColor: '#e4e6eb',
+    color: '#94a3b8',
+    fontSize: '16px',
+    fontFamily: 'Open Sans',
+    lineHeight: '40px',
+    outline: 'none',
+  },
+};
+
+const defaultProps = {
+  text: '',
+};
+
+const InputField = (props) => {
+  return (
+    <input style={styles.Input} placeholder={props.text ?? defaultProps.text} />
+  );
+};
+
+export default InputField;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#030303',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    fontWeight: 600,
+    lineHeight: '20px',
+  },
+};
+
+const defaultProps = {
+  text: 'Email',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Input: {
+    top: '312px',
+    left: '24px',
+    width: '327px',
+    height: '40px',
+    padding: '0px 8px',
+    border: '0',
+    boxSizing: 'border-box',
+    borderRadius: '6px',
+    backgroundColor: '#e4e6eb',
+    color: '#94a3b8',
+    fontSize: '16px',
+    fontFamily: 'Open Sans',
+    lineHeight: '40px',
+    outline: 'none',
+  },
+};
+
+const defaultProps = {
+  text: '',
+};
+
+const InputField = (props) => {
+  return (
+    <input style={styles.Input} placeholder={props.text ?? defaultProps.text} />
+  );
+};
+
+export default InputField;
+import React from 'react';
+
+const styles = {
+  Input: {
+    top: '392px',
+    left: '24px',
+    width: '327px',
+    height: '40px',
+    padding: '0px 8px',
+    border: '0',
+    boxSizing: 'border-box',
+    borderRadius: '6px',
+    backgroundColor: '#e4e6eb',
+    color: '#94a3b8',
+    fontSize: '16px',
+    fontFamily: 'Open Sans',
+    lineHeight: '40px',
+    outline: 'none',
+  },
+};
+
+const defaultProps = {
+  text: '',
+};
+
+const InputField = (props) => {
+  return (
+    <input style={styles.Input} placeholder={props.text ?? defaultProps.text} />
+  );
+};
+
+export default InputField;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#030303',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    fontWeight: 600,
+    lineHeight: '20px',
+  },
+};
+
+const defaultProps = {
+  text: 'Email',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#030303',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    fontWeight: 600,
+    lineHeight: '20px',
+  },
+};
+
+const defaultProps = {
+  text: 'Password',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Button: {
+    cursor: 'pointer',
+    top: '456px',
+    left: '24px',
+    width: '327px',
+    height: '36px',
+    padding: '0px 8px',
+    border: '0',
+    boxSizing: 'border-box',
+    borderRadius: '6px',
+    backgroundColor: '#1b74e4',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    fontWeight: 700,
+    lineHeight: '20px',
+    outline: 'none',
+  },
+};
+
+const defaultProps = {
+  label: 'Sign Up',
+};
+
+const Button = (props) => {
+  return (
+    <button style={styles.Button}>
+      {props.label ?? defaultProps.label}
+    </button>
+  );
+};
+
+export default Button;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#8a8d91',
+    fontSize: '12px',
+    fontFamily: 'Open Sans',
+    lineHeight: '16px',
+    textAlign: 'center',
+  },
+};
+
+const defaultProps = {
+  text: 'Already a member? Login',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#8a8d91',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    lineHeight: '20px',
+    textAlign: 'center',
+  },
+};
+
+const defaultProps = {
+  text: '© 2023 Doppleganger. All rights reserved.',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;
+import React from 'react';
+
+const styles = {
+  Text: {
+    color: '#8a8d91',
+    fontSize: '14px',
+    fontFamily: 'Open Sans',
+    lineHeight: '20px',
+    textAlign: 'center',
+  },
+};
+
+const defaultProps = {
+  text: 'Privacy Policy | Terms of Service',
+};
+
+const Text = (props) => {
+  return (
+    <div style={styles.Text}>
+      {props.text ?? defaultProps.text}
+    </div>
+  );
+};
+
+export default Text;

@@ -1,0 +1,9 @@
+.text {
+  color: #ffffff;
+  font-size: 10px;
+  font-family: 'Roboto';
+  font-weight: 500;
+  line-height: 13px;
+  text-align: center;
+  padding: 3px 6px;
+}

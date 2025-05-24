@@ -1,0 +1,218 @@
+.card {
+  /* Base style, defaults to REGISTERED MATCHES (red background) */
+  width: 140px;
+  height: 220px; /* Increased height to ensure all content fits */
+  background-color: #ef4444; /* Red */
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+  padding: 12px 0 8px 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: #fff; /* Default text color for red card */
+  margin-bottom: 16px; /* Add margin to bottom of card */
+  overflow: visible; /* Ensure no content is cut off */
+}
+
+/* currentUserCard: Blue background. Inherits text/border from .card or overrides if needed */
+.currentUserCard {
+  background-color: #007bff; /* Blue - Placeholder */
+  /* Assuming .card's default text color (#fff) and .imageBorder (black) are fine */
+}
+
+/* unregisteredMatchCard: Black background, white text, blue accents */
+.unregisteredMatchCard {
+  background-color: #000000; /* Black */
+  color: #fff; /* White text for black card */
+}
+
+/* Blue styling for unregistered match card */
+.unregisteredMatchCard {
+  background-color: #007bff; /* Blue background */
+  color: #fff;
+}
+
+.unregisteredMatchCard .imageBorder {
+  border-color: #007bff; /* Blue image border */
+}
+
+.unregisteredMatchCard .label {
+  background-color: #007bff; /* Blue label background */
+  color: #fff;
+}
+.unregisteredMatchCard .label span { /* Ensure text is white if not inherited */
+  color: #fff;
+}
+
+.unregisteredMatchCard .namePill {
+  background-color: #007bff; /* Blue name pill */
+}
+.unregisteredMatchCard .namePill span { /* Ensure text is white */
+  color: #fff;
+}
+
+.unregisteredMatchCard .cityState {
+    color: #fff; /* Ensure city/state is white */
+}
+
+.unregisteredMatchCard .similarity {
+  background-color: #007bff; /* Blue similarity pill */
+}
+.unregisteredMatchCard .similarity span {
+  color: #fff;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.imageContainer {
+  width: 100%;
+  position: relative;
+  margin-top: 30px; /* Reduced slightly to fit better in the card */
+  display: flex;
+  justify-content: center;
+}
+
+.imageBorder {
+  width: 108px;
+  height: 106px;
+  border: 2.67px solid #000;
+  border-radius: 6px;
+  background: rgba(0,0,0,0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image {
+  width: 100px;
+  height: 100px;
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-radius: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.image.loading {
+  opacity: 0.5;
+}
+
+.label {
+  width: 130px;
+  height: 26px;
+  background-color: #000;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.namePill {
+  width: auto;
+  min-width: 96px;
+  max-width: 120px;
+  height: 24px;
+  background-color: #000;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 0 8px;
+}
+
+.namePill span {
+  color: #fff;
+  font-size: 12px;
+  font-family: 'Open Sans';
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 4px;
+}
+
+.cityState {
+  color: #fff;
+  font-size: 11px;
+  font-family: 'Open Sans';
+  line-height: 14px;
+  margin-top: 4px;
+  text-align: center;
+  width: 100%;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cityState .separator {
+  margin: 0 2px;
+}
+
+.cityState .cityStatePlaceholder {
+  font-style: italic;
+  color: #bbbbbb; /* Adjusted placeholder color for dark backgrounds */
+}
+
+/* Styling for elements on the RED card (default .card) */
+.card .label { background-color: #000; }
+.card .label span { color: #fff; }
+.card .namePill { background-color: #000; }
+.card .namePill span { color: #fff; }
+.card .cityState { color: #fff; }
+.card .similarity { background-color: #fff; }
+.card .similarity span { color: #000; }
+
+/* Styling for elements on the BLUE card (.currentUserCard) */
+/* These will apply if .currentUserCard is added *alongside* .card in JSX */
+.currentUserCard .label { background-color: #000; } /* Black label */
+.currentUserCard .label span { color: #fff; }
+.currentUserCard .namePill { background-color: #000; } /* Black name pill */
+.currentUserCard .namePill span { color: #fff; }
+.currentUserCard .cityState { color: #fff; }
+.currentUserCard .similarity { background-color: #fff; } /* White similarity pill */
+.currentUserCard .similarity span { color: #000; }
+
+.similarity {
+  width: 87px;
+  height: 16px;
+  background-color: #fff;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.similarity span {
+  color: #000;
+  font-size: 12px;
+  font-family: 'Open Sans';
+  line-height: 16px;
+}
+
+.detail:last-child {
+  margin-bottom: 0;
+}
+
+/* Removed old .unregisteredCard and .searchMatchCard styles as they are replaced by new specific styles */

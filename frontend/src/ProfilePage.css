@@ -1,0 +1,140 @@
+.profile-page {
+  background: #f0f2f5;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+.profile-header {
+  position: relative;
+  width: 100%;
+}
+
+.cover-photo-container {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.cover-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info {
+  position: relative;
+  padding: 0 16px;
+  margin-top: -100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-image-container {
+  position: relative;
+  z-index: 2;
+}
+
+.profile-image {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 4px solid white;
+  object-fit: cover;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-details {
+  text-align: center;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.username {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.bio {
+  font-size: 18px;
+  color: #65676b;
+  margin: 8px 0;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #65676b;
+  font-size: 16px;
+}
+
+.matches-section {
+  padding: 24px 16px;
+}
+
+.matches-section h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #1a1a1a;
+}
+
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.match-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.match-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.match-info {
+  padding: 12px;
+}
+
+.match-similarity {
+  display: block;
+  font-weight: bold;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.match-location {
+  display: block;
+  color: #65676b;
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #65676b;
+}
+
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+}
+
+.no-matches {
+  text-align: center;
+  padding: 20px;
+  color: #65676b;
+  background: white;
+  border-radius: 8px;
+  margin-top: 16px;
+} 
