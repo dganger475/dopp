@@ -14,6 +14,7 @@ import os
 import shutil
 from abc import ABC, abstractmethod
 import b2sdk.v2 as b2
+from rate_limit import rate_limit
 
 from flask import current_app, url_for
 from werkzeug.utils import secure_filename
@@ -340,9 +341,10 @@ class B2Storage(StorageBackend):
             return f"{folder}/{filename}"
         return filename
 
+    @rate_limit(max_retries=3, delay=2)
     def save(self, file_obj, filename, folder=None):
         """
-        Save a file to B2 storage.
+        Save a file to B2 storage with rate limiting.
 
         Args:
             file_obj: The file object to save
@@ -359,7 +361,7 @@ class B2Storage(StorageBackend):
             # Get the B2 key
             key = self._get_key(filename, folder)
 
-            # Upload the file
+            # Upload the file with retry logic
             self.bucket.upload_bytes(
                 file_obj.read(),
                 key,
@@ -367,13 +369,17 @@ class B2Storage(StorageBackend):
             )
 
             return True, key
+        except b2.exception.DownloadCapExceeded as e:
+            logger.error(f"B2 download cap exceeded: {e}")
+            raise  # Let the decorator handle the retry
         except Exception as e:
             logger.error(f"Error saving file to B2: {e}")
             return False, str(e)
 
+    @rate_limit(max_retries=3, delay=2)
     def get_url(self, filename, folder=None):
         """
-        Get the URL for a file in B2 storage.
+        Get the URL for a file in B2 storage with rate limiting.
 
         Args:
             filename: The filename to get the URL for
@@ -387,13 +393,17 @@ class B2Storage(StorageBackend):
             # Get a download URL that's valid for 1 hour
             download_url = self.bucket.get_download_url(key)
             return download_url
+        except b2.exception.DownloadCapExceeded as e:
+            logger.error(f"B2 download cap exceeded: {e}")
+            raise  # Let the decorator handle the retry
         except Exception as e:
             logger.error(f"Error getting URL for file: {e}")
             return ""
 
+    @rate_limit(max_retries=3, delay=2)
     def delete(self, filename, folder=None):
         """
-        Delete a file from B2 storage.
+        Delete a file from B2 storage with rate limiting.
 
         Args:
             filename: The filename to delete
@@ -409,6 +419,9 @@ class B2Storage(StorageBackend):
                 self.bucket.delete_file_version(file_version.id_, file_version.file_name)
                 return True
             return False
+        except b2.exception.DownloadCapExceeded as e:
+            logger.error(f"B2 download cap exceeded: {e}")
+            raise  # Let the decorator handle the retry
         except Exception as e:
             logger.error(f"Error deleting file from B2: {e}")
             return False
