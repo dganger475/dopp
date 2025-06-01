@@ -94,16 +94,9 @@ def discover():
 def index():
     """
     Home page of the application.
-    Redirects to login/register page when not logged in.
-    Redirects to social feed when logged in for consistent UI.
+    Redirects to the React frontend.
     """
-    from flask_login import current_user
-    if not current_user.is_authenticated:
-        return redirect(url_for("auth_bp.login"))
-    
-    # Redirect to the social feed to maintain consistent UI 
-    # This ensures the same template with the same context variables is used
-    return redirect(url_for("social.feed.feed_page"))
+    return redirect("http://localhost:5173")
 
 
 # =============================

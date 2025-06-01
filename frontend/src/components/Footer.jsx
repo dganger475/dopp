@@ -11,6 +11,7 @@ const Footer = () => {
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
           <Link to="/contact">Contact</Link>
+          <Link to="/removal" style={{ color: '#ff4757' }}>Don't want to be here? Click here for removal</Link>
         </div>
         <div className={styles.copyright}>
           © {new Date().getFullYear()} Dopp. All rights reserved.

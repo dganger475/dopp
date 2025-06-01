@@ -123,9 +123,9 @@ def create_app(config_class=None):
     app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
     app.config['SESSION_PERMANENT'] = True
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-    app.config['SESSION_COOKIE_SECURE'] = False  # For local development, set to True in production
+    app.config['SESSION_COOKIE_SECURE'] = False  # For local development
     app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # For local dev, use 'Lax'. Use 'None' for cross-site cookies in production with HTTPS
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # For local development
     
     # Initialize extensions first
     from extensions import init_extensions
@@ -136,7 +136,7 @@ def create_app(config_class=None):
     
     # Setup CORS for local development
     from flask_cors import CORS
-    CORS(app, supports_credentials=True, origins=["http://localhost:5173"])  # Allow frontend dev server
+    CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5001", "http://127.0.0.1:5001"])  # Allow frontend dev server
     
     # User loader for Flask-Login
     @login_manager.user_loader
@@ -169,6 +169,15 @@ def create_app(config_class=None):
             'is_anonymized_face_filename': is_anonymized_face_filename,
             'parse_face_id_from_filename': parse_face_id_from_filename
         }
+    
+    # Serve React App
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        else:
+            return send_from_directory(app.static_folder, 'index.html')
     
     return app
 

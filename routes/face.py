@@ -20,6 +20,8 @@ from utils.files.image_handler import ImageHandler
 from utils.index.faiss_manager import FaissIndexManager 
 from utils.csrf import csrf
 from .config import get_image_paths, get_db_path, get_default_profile_image_path
+from utils.files.utils import download_file, get_b2_bucket
+import tempfile
 
 face = Blueprint('face', __name__)
 
@@ -284,6 +286,29 @@ def direct_face_view(face_id):
     finally:
         if conn:
             conn.close()
+
+@face.route('/download/<filename>')
+@login_required
+def download_face(filename):
+    try:
+        bucket = get_b2_bucket()
+        download = download_file(bucket, filename)
+        
+        if not download:
+            return jsonify({'error': 'File not found'}), 404
+            
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            download.save(temp_file.name)
+            return send_file(
+                temp_file.name,
+                mimetype='image/jpeg',
+                as_attachment=True,
+                download_name=filename
+            )
+    except Exception as e:
+        current_app.logger.error(f"Error downloading file {filename}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 def send_default_image():
     """Helper function to send the default profile image."""

@@ -30,12 +30,13 @@ const PrivacyPage = () => {
 Doppleganger Social Network is developed by Jacob Layton and operated from:
 📍 2135 NW 13th St Unit 35, Gresham, OR 97030
 📧 dganger475@gmail.com
+🌐 doppleganger.us
 
 2. What We Collect
 When you register or use the app, we may collect:
 
 a. Information You Provide
-Name (for your profile)
+Name (for your profile, stored internally but never publicly displayed)
 
 Face Image Uploads (used to find look-alikes)
 
@@ -76,7 +77,7 @@ It is converted into a numerical face vector used for matching
 
 Your face vector is added to the database, allowing others to match with it
 
-Your original photo is securely stored, but not visible to other users
+Your original photo is securely stored in private Backblaze B2 buckets, but not visible to other users
 
 6. Recognition and Labeling
 Only you can identify yourself in results
@@ -88,7 +89,9 @@ No personal information is embedded into search results
 7. Data Security
 We protect your data by:
 
-Using secure storage and face encoding systems
+Using secure storage in private Backblaze B2 buckets
+
+Hosting our application on Render's secure infrastructure
 
 Limiting internal access
 
@@ -104,6 +107,8 @@ Request deletion of your image, name, or embedding
 Ask what data we hold on you
 
 Withdraw consent at any time
+
+Users may contact dganger475@gmail.com to request permanent removal of any content associated with their image.
 
 📧 Contact: dganger475@gmail.com
 We typically respond and process removals within 72 hours.

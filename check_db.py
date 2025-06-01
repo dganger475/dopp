@@ -1,66 +1,64 @@
 import sqlite3
-import sys
+import os
+import logging
+from werkzeug.security import check_password_hash
 
-def check_db():
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def check_database():
+    """Check database connection and user data."""
+    # Get database path
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'faces.db')
+    logger.info(f"Checking database at: {db_path}")
+    
+    if not os.path.exists(db_path):
+        logger.error(f"Database file not found at {db_path}")
+        return False
+    
     try:
-        # Connect to the database
-        conn = sqlite3.connect('faces.db')
+        # Connect to database
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Get all tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
-        print("\nTables in database:")
-        for table in tables:
-            print(f"- {table[0]}")
+        # Check if users table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        if not cursor.fetchone():
+            logger.error("Users table does not exist")
+            return False
+            
+        # Get all users
+        cursor.execute("SELECT id, username, email, password_hash FROM users")
+        users = cursor.fetchall()
         
-        # Check likes table
-        print("\nChecking 'likes' table:")
-        try:
-            cursor.execute("PRAGMA table_info(likes)")
-            columns = cursor.fetchall()
-            if columns:
-                print("Columns in 'likes' table:")
-                for col in columns:
-                    print(f"  - {col[1]} ({col[2]})")
-            else:
-                print("  - 'likes' table does not exist or has no columns")
-        except sqlite3.Error as e:
-            print(f"  - Error checking 'likes' table: {e}")
+        if not users:
+            logger.info("No users found in database")
+            return False
+            
+        logger.info(f"Found {len(users)} users in database:")
+        for user in users:
+            logger.info(f"ID: {user[0]}, Username: {user[1]}, Email: {user[2]}")
+            
+        # Check specific user
+        test_email = "officialrealkeed@gmail.com"
+        cursor.execute("SELECT * FROM users WHERE email = ?", (test_email,))
+        user = cursor.fetchone()
         
-        # Check comments table
-        print("\nChecking 'comments' table:")
-        try:
-            cursor.execute("PRAGMA table_info(comments)")
-            columns = cursor.fetchall()
-            if columns:
-                print("Columns in 'comments' table:")
-                for col in columns:
-                    print(f"  - {col[1]} ({col[2]})")
-            else:
-                print("  - 'comments' table does not exist or has no columns")
-        except sqlite3.Error as e:
-            print(f"  - Error checking 'comments' table: {e}")
+        if user:
+            logger.info(f"Found user with email {test_email}:")
+            logger.info(f"ID: {user[0]}, Username: {user[1]}, Email: {user[2]}")
+        else:
+            logger.info(f"No user found with email {test_email}")
+            
+        return True
         
-        # Check posts table
-        print("\nChecking 'posts' table:")
-        try:
-            cursor.execute("PRAGMA table_info(posts)")
-            columns = cursor.fetchall()
-            if columns:
-                print("Columns in 'posts' table:")
-                for col in columns:
-                    print(f"  - {col[1]} ({col[2]})")
-            else:
-                print("  - 'posts' table does not exist or has no columns")
-        except sqlite3.Error as e:
-            print(f"  - Error checking 'posts' table: {e}")
-        
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
+    except Exception as e:
+        logger.error(f"Error checking database: {e}")
+        return False
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 if __name__ == "__main__":
-    check_db()
+    check_database()

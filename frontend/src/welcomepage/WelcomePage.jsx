@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import styles from './WelcomePage.module.css';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LazyImage from '../components/LazyImage';
+import StandardButton from '../components/StandardButton';
+import PageLayout from '../components/PageLayout';
+import Footer from '../components/Footer';
 
 // Memoized logo component
 const Logo = memo(() => (
@@ -17,13 +20,6 @@ const Logo = memo(() => (
   />
 ));
 
-// Memoized button component
-const LoginButton = memo(({ onClick }) => (
-  <button onClick={onClick} className={styles.welcomeButton}>
-    Login / Register
-  </button>
-));
-
 const WelcomePageContent = () => {
   const navigate = useNavigate();
 
@@ -32,14 +28,26 @@ const WelcomePageContent = () => {
   }, [navigate]);
 
   return (
-    <div className={styles.welcomePage}>
-      <Logo />
-      <h1 className={styles.welcomeHeading}>Welcome to DoppleGänger</h1>
-      <p className={styles.welcomeTagline}>
-        Find your historical doppelgänger, connect, and explore!
-      </p>
-      <LoginButton onClick={handleLoginClick} />
-    </div>
+    <PageLayout>
+      <div className={styles.welcomePage}>
+        <div className={styles.welcomeContent}>
+          <Logo />
+          <h1 className={styles.welcomeHeading}>Welcome to DoppleGänger</h1>
+          <p className={styles.welcomeTagline}>
+            Find your historical doppelgänger, connect, and explore!
+          </p>
+          <StandardButton 
+            onClick={handleLoginClick}
+            className={styles.welcomeButton}
+            variant="primary"
+            size="large"
+          >
+            Get Started
+          </StandardButton>
+        </div>
+        <Footer />
+      </div>
+    </PageLayout>
   );
 };
 

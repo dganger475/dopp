@@ -6,17 +6,101 @@ Provides functions to add user profile images to the face database and FAISS ind
 """
 
 import os
-
-import face_recognition
+import logging
+import numpy as np
+import faiss
+from typing import Optional, Tuple
 from flask import current_app
 from PIL import Image  # Explicit import for Image
 
-import numpy as np  # Explicit import for numpy
+import face_recognition
 from models.face import Face
 from models.social import ClaimedProfile  # Import ClaimedProfile
-from utils.face.recognition import rebuild_faiss_index
+from utils.face.recognition import rebuild_faiss_index, extract_face_encoding
 from utils.db.database import get_db_connection # Added import
+from utils.face.detection import detect_faces
+from utils.db.storage import get_storage
 
+logger = logging.getLogger(__name__)
+
+def get_index() -> Optional[faiss.Index]:
+    """Get or create the FAISS index."""
+    try:
+        index_path = os.path.join(os.path.dirname(__file__), '..', '..', 'instance', 'face_index.bin')
+        if os.path.exists(index_path):
+            return faiss.read_index(index_path)
+        else:
+            # Create a new index if it doesn't exist
+            dimension = 512  # FaceNet embedding dimension
+            index = faiss.IndexFlatL2(dimension)
+            return index
+    except Exception as e:
+        logger.error(f"Error getting FAISS index: {e}")
+        return None
+
+def save_index(index: faiss.Index) -> bool:
+    """Save the FAISS index to disk."""
+    try:
+        index_path = os.path.join(os.path.dirname(__file__), '..', '..', 'instance', 'face_index.bin')
+        os.makedirs(os.path.dirname(index_path), exist_ok=True)
+        faiss.write_index(index, index_path)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving FAISS index: {e}")
+        return False
+
+def index_face(image_path: str, user_id: Optional[int] = None) -> Tuple[bool, Optional[str]]:
+    """
+    Index a face image and store its embedding in the database.
+    
+    Args:
+        image_path (str): Path to the image file
+        user_id (Optional[int]): User ID if this is a user's face
+        
+    Returns:
+        Tuple[bool, Optional[str]]: (success, error_message)
+    """
+    try:
+        # Detect faces in the image
+        faces = detect_faces(image_path)
+        if not faces:
+            return False, "No faces detected in image"
+        
+        # Get face encoding
+        face_encoding = extract_face_encoding(image_path, faces[0])
+        if face_encoding is None:
+            return False, "Failed to get face encoding"
+        
+        # Get or create FAISS index
+        index = get_index()
+        if index is None:
+            return False, "Failed to get FAISS index"
+        
+        # Add face to index
+        face_vector = np.array([face_encoding], dtype=np.float32)
+        index.add(face_vector)
+        
+        # Save updated index
+        if not save_index(index):
+            return False, "Failed to save FAISS index"
+        
+        # Store in database
+        with get_db_connection() as db:
+            if db is None:
+                return False, "Failed to get database connection"
+            
+            cursor = db.cursor()
+            cursor.execute("""
+                INSERT INTO faces (filename, user_id, embedding)
+                VALUES (?, ?, ?)
+            """, (os.path.basename(image_path), user_id, face_encoding.tobytes()))
+            db.commit()
+        
+        return True, None
+        
+    except Exception as e:
+        logger.error(f"Error indexing face: {e}")
+        return False, str(e)
 
 def index_profile_face(filename, user_id, username):
     """

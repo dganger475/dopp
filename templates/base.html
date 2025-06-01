@@ -7,12 +7,10 @@
     <title>{% block title %}DoppleGänger{% endblock %}</title>
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
-    <!-- Google Fonts (optional, can remove if you want only your custom font) -->
-    <!-- <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"> -->
-    <!-- Main CSS for modern Doppleganger UI (DISABLED FOR NOW) -->
-    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"> -->
-    <!-- Remove or comment out the global style block below to prevent global overrides -->
-    <!--
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <style>
       :root {
         --primary: #1b74e4;
@@ -43,14 +41,14 @@
         -moz-osx-font-smoothing: grayscale;
       }
       .main-nav {
-        background-color: var(--primary);
+        background-color: var(--surface);
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-bottom: 4px solid #111;
+        box-shadow: var(--shadow);
+        border-bottom: 1px solid var(--border);
       }
       .nav-container {
         max-width: 1200px;
@@ -58,53 +56,78 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 2px 20px;
+        padding: 12px 20px;
       }
       .nav-links {
         flex: 1;
         display: flex;
-        justify-content: space-evenly;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 24px;
+      }
+      .nav-logo {
+        display: flex;
         align-items: center;
       }
       .nav-logo img {
-        height: 32px !important;
-        width: auto !important;
-        max-height: 32px !important;
-        min-height: 24px !important;
-        display: block;
+        height: 40px;
+        width: auto;
         object-fit: contain;
-        margin: 0;
-        padding: 0;
-        box-shadow: none !important;
-        border-radius: 0 !important;
+      }
+      .nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .nav-link:hover {
+        color: var(--text);
+      }
+      .nav-link.active {
+        color: var(--primary);
       }
       .nav-link img {
-        width: 24px !important;
-        height: 24px !important;
-        min-width: 24px !important;
-        min-height: 24px !important;
-        max-width: 24px !important;
-        max-height: 24px !important;
-        display: block;
+        width: 24px;
+        height: 24px;
         object-fit: contain;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        margin: 0 auto;
-        padding: 0;
       }
-      @media (max-width: 700px) {
-        .nav-logo img { height: 24px !important; max-height: 24px !important; }
-        .nav-link img { width: 20px !important; height: 20px !important; min-width: 20px !important; min-height: 20px !important; max-width: 20px !important; max-height: 20px !important; }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      footer {
+        background: var(--surface);
+        padding: 24px 0;
+        margin-top: 48px;
+        border-top: 1px solid var(--border);
+      }
+      footer .container {
+        text-align: center;
+        color: var(--text-secondary);
+      }
+      @media (max-width: 768px) {
+        .nav-logo img {
+          height: 32px;
+        }
+        .nav-links {
+          gap: 16px;
+        }
+        .nav-link img {
+          width: 20px;
+          height: 20px;
+        }
       }
     </style>
-    -->
     {% block extra_styles %}{% endblock %}
 </head>
 <body>
   <nav class="main-nav">
     <div class="nav-container">
-      <a href="{{ url_for('social.feed.feed_page') }}" class="nav-logo">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+      <a href="{{ url_for('main.index') }}" class="nav-logo">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="DoppleGänger">
       </a>
       <div class="nav-links">
         <a href="{{ url_for('social.feed.feed_page') }}" class="nav-link{% if request.endpoint == 'social.feed.feed_page' %} active{% endif %}" title="Home">
@@ -122,7 +145,7 @@
       </div>
     </div>
   </nav>
-  <main class="container" style="margin-top: 24px;">
+  <main class="container">
     {% block content %}{% endblock %}
   </main>
   <footer>

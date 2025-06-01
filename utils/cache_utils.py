@@ -9,10 +9,15 @@ import hashlib
 import json
 import logging
 from functools import wraps
+from datetime import datetime, timedelta
 
 from flask import current_app
 
 logger = logging.getLogger(__name__)
+
+# Simple in-memory cache for development
+_cache = {}
+_cache_expiry = {}
 
 
 def cache_key(prefix, *args, **kwargs):
@@ -132,10 +137,9 @@ def clear_all_caches():
         bool: True if successful, False otherwise
     """
     try:
-        cache = current_app.cache
-        if hasattr(cache, "clear"):
-            return cache.clear()
-        return False
+        _cache.clear()
+        _cache_expiry.clear()
+        return True
     except Exception as e:
         logger.error(f"Error clearing cache: {str(e)}")
         return False
@@ -144,7 +148,16 @@ def clear_all_caches():
 def get_cache_value(key, default=None):
     """Get a value from the cache."""
     try:
-        return current_app.extensions['cache'].get(key, default)
+        # Check if key exists and hasn't expired
+        if key in _cache:
+            expiry = _cache_expiry.get(key)
+            if expiry is None or datetime.now() < expiry:
+                return _cache[key]
+            else:
+                # Clean up expired value
+                del _cache[key]
+                del _cache_expiry[key]
+        return default
     except Exception as e:
         logger.error(f"Cache get error for key {key}: {str(e)}")
         return default
@@ -153,7 +166,11 @@ def get_cache_value(key, default=None):
 def set_cache_value(key, value, timeout=None):
     """Set a value in the cache."""
     try:
-        current_app.extensions['cache'].set(key, value, timeout=timeout)
+        _cache[key] = value
+        if timeout:
+            _cache_expiry[key] = datetime.now() + timedelta(seconds=timeout)
+        else:
+            _cache_expiry[key] = None
     except Exception as e:
         logger.error(f"Cache set error for key {key}: {str(e)}")
 
@@ -161,7 +178,10 @@ def set_cache_value(key, value, timeout=None):
 def delete_cache_value(key):
     """Delete a value from the cache."""
     try:
-        current_app.extensions['cache'].delete(key)
+        if key in _cache:
+            del _cache[key]
+        if key in _cache_expiry:
+            del _cache_expiry[key]
     except Exception as e:
         logger.error(f"Cache delete error for key {key}: {str(e)}")
 

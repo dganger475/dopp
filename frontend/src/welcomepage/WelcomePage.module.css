@@ -1,1 +1,97 @@
- 
+.welcomePage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+}
+
+.welcomeContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.welcomeLogo {
+  width: 260px;
+  height: 260px;
+  margin-bottom: 2.5rem;
+  border-radius: 50%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.welcomeLogo:hover {
+  transform: scale(1.05);
+}
+
+.welcomeHeading {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.welcomeTagline {
+  font-size: 1.2rem;
+  color: #4a4a4a;
+  margin-bottom: 2.5rem;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.welcomeButton {
+  min-width: 200px;
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.welcomeButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .welcomeLogo {
+    width: 180px;
+    height: 180px;
+    margin-bottom: 1.5rem;
+  }
+
+  .welcomeHeading {
+    font-size: 2rem;
+  }
+
+  .welcomeTagline {
+    font-size: 1rem;
+    padding: 0 1rem;
+  }
+
+  .welcomeButton {
+    min-width: 160px;
+    padding: 0.875rem 1.75rem;
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcomeLogo {
+    width: 140px;
+    height: 140px;
+  }
+
+  .welcomeHeading {
+    font-size: 1.75rem;
+  }
+
+  .welcomeTagline {
+    font-size: 0.9rem;
+  }
+} 

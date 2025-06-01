@@ -17,8 +17,9 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
-    user = db.relationship('User', backref=db.backref('comments', lazy=True))
+    # Relationships with back_populates to avoid conflicts
+    user = db.relationship('User', back_populates='comments', lazy=True, overlaps="comment_author,user_comments")
+    post = db.relationship('Post', back_populates='comments', lazy=True)
 
     @classmethod
     def create(cls, post_id, user_id, content):

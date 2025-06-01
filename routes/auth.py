@@ -180,10 +180,13 @@ def login():
             if not username_or_email or not password:
                 raise ValidationError("Username/Email and password are required")
 
-            # Use SQLAlchemy session for database operations
-            with db.session.begin():
+            # Query user without transaction
+            user = None
+            try:
+                # Try username first
                 user = User.query.filter_by(username=username_or_email).first()
                 if not user:
+                    # Try email if username not found
                     user = User.query.filter_by(email=username_or_email).first()
                     logger.info(f"User not found by username, trying email lookup for: {username_or_email}")
 
@@ -222,6 +225,13 @@ def login():
                         }
                     })
                 return redirect(url_for("social.feed.feed_page"))
+
+            except Exception as e:
+                logger.error(f"Database error during login: {str(e)}")
+                if request.is_json:
+                    return jsonify({"error": "An error occurred during login"}), 500
+                flash("An error occurred during login", "error")
+                return render_template("auth/login.html", title="Login", form=LoginForm())
 
         return render_template("auth/login.html", title="Login", form=LoginForm())
     except Exception as e:

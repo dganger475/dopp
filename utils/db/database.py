@@ -128,13 +128,28 @@ def get_db_connection(db_path=None, app=None):
         # Enable foreign keys
         conn.execute("PRAGMA foreign_keys = ON")
         
-        yield conn
+        # Start transaction
+        conn.execute("BEGIN TRANSACTION")
+        
+        try:
+            yield conn
+            # If no exception occurred, commit the transaction
+            conn.commit()
+        except Exception as e:
+            # If an exception occurred, rollback the transaction
+            conn.rollback()
+            raise
     except Exception as e:
         logging.error(f"Database connection failed: {e}")
         raise
     finally:
         if conn:
             try:
+                # Ensure any remaining transaction is rolled back
+                try:
+                    conn.rollback()
+                except sqlite3.Error:
+                    pass  # Ignore errors during rollback
                 conn.close()
             except Exception as e:
                 logging.error(f"Error closing database connection: {e}")

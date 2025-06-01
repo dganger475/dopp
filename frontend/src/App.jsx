@@ -64,6 +64,7 @@ const TermsPage = lazyLoad(() => import('./pages/TermsPage'));
 const PrivacyPage = lazyLoad(() => import('./pages/PrivacyPage'));
 const AboutPage = lazyLoad(() => import('./pages/AboutPage'));
 const ContactPage = lazyLoad(() => import('./pages/ContactPage'));
+const RemovalPage = lazyLoad(() => import('./pages/RemovalPage'));
 
 // Terms and Privacy Policy components
 const TermsPageContent = () => (
@@ -359,6 +360,7 @@ const AppContent = () => {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/removal" element={<RemovalPage />} />
             <Route path="/instructions" element={loggedIn ? <InstructionsPage onContinue={() => window.location.href = '/feed'} /> : <Navigate to="/login" replace />} />
             <Route path="/search" element={wrapWithLayout(SearchPage)} />
             <Route path="/profile" element={wrapWithLayout(ProfilePage)} />

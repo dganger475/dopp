@@ -15,9 +15,9 @@ class Like(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships
-    user = db.relationship('User', backref=db.backref('likes', lazy=True, cascade='all, delete-orphan'))
-    post = db.relationship('Post', backref=db.backref('post_likes', lazy=True, cascade='all, delete-orphan'))
+    # Relationships with back_populates to avoid conflicts
+    user = db.relationship('User', back_populates='likes', lazy=True, overlaps="like_author,user_likes")
+    post = db.relationship('Post', back_populates='likes', lazy=True, overlaps="post_ref,post_likes")
 
     def __repr__(self):
         return f'<Like {self.id}>'

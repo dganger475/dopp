@@ -48,7 +48,16 @@ def init_extensions(app):
     app.config['SESSION_COOKIE_SAMESITE'] = app.config.get('SESSION_COOKIE_SAMESITE', 'Lax')
     session_store.init_app(app)
     
-    talisman.init_app(app)
+    # Configure Talisman for development
+    talisman.init_app(
+        app,
+        force_https=False,  # Don't force HTTPS in development
+        strict_transport_security=False,  # Disable HSTS in development
+        session_cookie_secure=False,  # Allow non-HTTPS cookies in development
+        content_security_policy=None,  # Disable CSP in development
+        feature_policy=None,  # Disable feature policy in development
+    )
+    
     login_manager.init_app(app)
     moment.init_app(app)
     

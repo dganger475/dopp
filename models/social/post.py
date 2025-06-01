@@ -29,10 +29,10 @@ class Post(db.Model):
     is_match_post = db.Column(db.Boolean, default=False)
     face_filename = db.Column(db.String(255))
 
-    # Relationships
-    user = db.relationship('User', backref=db.backref('posts', lazy=True))
-    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
-    likes = db.relationship('Like', backref='post_ref', lazy=True, cascade='all, delete-orphan')
+    # Relationships with back_populates to avoid conflicts
+    user = db.relationship('User', back_populates='posts', overlaps="post_author,user_posts")
+    comments = db.relationship('Comment', back_populates='post', lazy=True, cascade='all, delete-orphan')
+    likes = db.relationship('Like', back_populates='post', lazy=True, cascade='all, delete-orphan', overlaps="post_ref,post_likes")
 
     def __repr__(self):
         return f'<Post {self.id}>'

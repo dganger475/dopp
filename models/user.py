@@ -43,10 +43,12 @@ class User(UserMixin, db.Model):
     share_age = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships
-    user_posts = db.relationship('Post', backref='post_author', lazy=True)
-    user_likes = db.relationship('Like', backref='like_author', lazy=True)
-    user_comments = db.relationship('Comment', backref='comment_author', lazy=True)
+    # Relationships with back_populates to avoid conflicts
+    posts = db.relationship('Post', back_populates='user', lazy=True, overlaps="post_author,user_posts")
+    likes = db.relationship('Like', back_populates='user', lazy=True, overlaps="like_author,user_likes")
+    comments = db.relationship('Comment', back_populates='user', lazy=True, overlaps="comment_author,user_comments")
+    
+    # Followers relationship
     followers = db.relationship(
         'User',
         secondary='follows',
