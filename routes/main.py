@@ -60,7 +60,7 @@ def discover():
     """
     user_id = session.get("user_id")
     if not user_id:
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth_bp.login"))
     # Sample data for demonstration; replace with real queries later
     sections = [
         {
@@ -99,7 +99,7 @@ def index():
     """
     from flask_login import current_user
     if not current_user.is_authenticated:
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth_bp.login"))
     
     # Redirect to the social feed to maintain consistent UI 
     # This ensures the same template with the same context variables is used

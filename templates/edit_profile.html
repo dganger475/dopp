@@ -1,216 +1,122 @@
-{% extends "base.html" %}
-{% block title %}Edit Profile - DoppleGanger{% endblock %}
-{% block styles %}
-<style>
-  .main-container {
-    margin-top: 80px;
-    max-width: 420px;
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.09);
-    padding: 18px 10px 28px 10px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .profile-image {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: #eaeaea;
-    margin: 0 auto 12px auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .profile-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .title {
-    font-size: 1.3em;
-    font-weight: 700;
-    margin-bottom: 18px;
-    text-align: center;
-    color: #1b74e4;
-  }
-  .form-group {
-    margin-bottom: 16px;
-  }
-  .form-label {
-    font-weight: 600;
-    font-size: 1em;
-    margin-bottom: 6px;
-    display: block;
-    color: #222;
-  }
-  .form-input, .form-textarea {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 1em;
-    color: #333;
-  }
-  .form-textarea {
-    min-height: 100px;
-    resize: vertical;
-  }
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 24px;
-  }
-  .cancel-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #f0f2f5;
-    color: #333;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .save-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #1b74e4;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .save-button:hover {
-    background: #1666ca;
-  }
-  .message {
-    padding: 10px;
-    margin-bottom: 16px;
-    border-radius: 6px;
-  }
-  .message.success {
-    background: #e3f3e3;
-    color: #2d662d;
-  }
-  .message.error {
-    background: #fde8e8;
-    color: #c81e1e;
-  }
-  .message.warning {
-    background: #fff3e0;
-    color: #b35d00;
-  }
-  .image-upload-container {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  .profile-image-label {
-    cursor: pointer;
-  }
-  .file-input {
-    display: none;
-  }
-</style>
+{#
+  edit_profile.html
+  ---------
+  Purpose: Edit user profile information and settings.
+  Usage: Used by '/profile/edit' route.
+  Context: Unified with social_base.html for consistent navigation and layout.
+#}
+{% extends "social_base.html" %}
+{% block title %}Edit Profile{% endblock %}
+{% block extra_styles %}
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <style>
+    .profile-edit-container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: var(--card-shadow);
+    }
+    .profile-image-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .profile-image-preview {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .btn-save {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-save:hover {
+      opacity: 0.9;
+    }
+  </style>
 {% endblock %}
 {% block content %}
-<div class="main-container">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="message {{ category }}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-  
-  <form method="POST" enctype="multipart/form-data" action="{{ url_for('edit_profile.edit_profile_view') }}">
-    {{ form.csrf_token }}
+  <div class="profile-edit-container">
+    <h2 style="margin-bottom: 30px; text-align: center;">Edit Profile</h2>
     
-    <div class="image-upload-container">
-      <label for="profileImageInput" class="profile-image-label">
-        <div class="profile-image" id="profilePicPreview">
-          {% if user.profile_image %}
-            <img src="{{ url_for('static', filename='profile_pics/' + user.profile_image) }}" alt="Profile Picture">
-          {% else %}
-            <img src="{{ url_for('static', filename='default_profile.png') }}" alt="Default Profile Picture">
-          {% endif %}
-          <span style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 5px; border-radius: 3px; font-size: 12px;">Change</span>
+    <form action="{{ url_for('social.update_profile') }}" method="POST" enctype="multipart/form-data">
+      <!-- Profile Image -->
+      <div class="profile-image-section">
+        <img src="{{ get_profile_image_url(user.profile_image_url) }}" alt="Profile" class="profile-image-preview" id="profileImagePreview">
+        <div class="form-group">
+          <label for="profile_image">Change Profile Picture</label>
+          <input type="file" id="profile_image" name="profile_image" accept="image/*" class="form-control" onchange="previewImage(this)">
         </div>
-      </label>
-      <input type="file" name="profile_photo" id="profileImageInput" class="file-input" accept="image/*">
-    </div>
-
-    <h1 class="title">Edit Your Profile</h1>
-
-    <div class="form-group">
-      <label class="form-label">Username</label>
-      <input class="form-input" type="text" name="username" value="{{ user.username or '' }}" placeholder="Choose a username" maxlength="32" required>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">First Name</label>
-      <input class="form-input" type="text" name="first_name" value="{{ user.first_name or '' }}" placeholder="Your first name" maxlength="32">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Last Name</label>
-      <input class="form-input" type="text" name="last_name" value="{{ user.last_name or '' }}" placeholder="Your last name" maxlength="32">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Bio</label>
-      <textarea class="form-textarea" name="bio" placeholder="Tell us about yourself" maxlength="500">{{ user.bio or '' }}</textarea>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Current City</label>
-      <input class="form-input" type="text" name="current_location_city" value="{{ user.current_location_city or '' }}" placeholder="Your current city" maxlength="100">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Current State</label>
-      <input class="form-input" type="text" name="current_location_state" value="{{ user.current_location_state or '' }}" placeholder="Your current state" maxlength="100">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Hometown</label>
-      <input class="form-input" type="text" name="hometown" value="{{ user.hometown or '' }}" placeholder="Your hometown" maxlength="100">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Website</label>
-      <input class="form-input" type="url" name="website" value="{{ user.website or '' }}" placeholder="Your website URL" maxlength="128">
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Interests</label>
-      <textarea class="form-textarea" name="interests" placeholder="What are your interests? (comma separated)" maxlength="200">{{ user.interests or '' }}</textarea>
-    </div>
-
-    <div class="form-actions">
-      <a href="{{ url_for('profile_view.view_profile') }}" class="cancel-button">Cancel</a>
-      <button type="submit" class="save-button">Save Changes</button>
-    </div>
-  </form>
-</div>
-
-<script>
-document.getElementById('profileImageInput').addEventListener('change', function(e) {
-  if (e.target.files && e.target.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const preview = document.getElementById('profilePicPreview');
-      const img = preview.querySelector('img') || document.createElement('img');
-      img.src = e.target.result;
-      if (!preview.querySelector('img')) {
-        preview.appendChild(img);
+      </div>
+      
+      <!-- Basic Info -->
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" value="{{ user.username }}" class="form-control" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ user.email }}" class="form-control" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="full_name">Full Name</label>
+        <input type="text" id="full_name" name="full_name" value="{{ user.full_name }}" class="form-control">
+      </div>
+      
+      <!-- Privacy Settings -->
+      <div class="form-group">
+        <label>Privacy Settings</label>
+        <div style="margin-top: 10px;">
+          <input type="checkbox" id="show_email" name="show_email" {% if user.show_email %}checked{% endif %}>
+          <label for="show_email" style="display: inline; margin-left: 8px;">Show email to other users</label>
+        </div>
+        <div style="margin-top: 10px;">
+          <input type="checkbox" id="show_matches" name="show_matches" {% if user.show_matches %}checked{% endif %}>
+          <label for="show_matches" style="display: inline; margin-left: 8px;">Show matches on profile</label>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 30px;">
+        <button type="submit" class="btn-save">Save Changes</button>
+      </div>
+    </form>
+  </div>
+  
+  <script>
+    function previewImage(input) {
+      if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('profileImagePreview').src = e.target.result;
+        }
+        reader.readAsDataURL(input.files[0]);
       }
     }
-    reader.readAsDataURL(e.target.files[0]);
-  }
-});
-</script>
+  </script>
 {% endblock %}

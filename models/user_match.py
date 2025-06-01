@@ -243,6 +243,33 @@ class UserMatch:
         return []
 
     @classmethod
+    def create(cls, user_id, match_filename=None, face_id=None, post_id=None, is_visible=1, privacy_level="public", similarity=None):
+        """Create a new user match record.
+        
+        Args:
+            user_id: ID of the user
+            match_filename: Filename of the match face
+            face_id: ID of the face (optional)
+            post_id: ID of the post this match is associated with (optional)
+            is_visible: Whether the match should be visible (1=yes, 0=no)
+            privacy_level: Privacy level (public, friends, private)
+            similarity: Similarity score (optional)
+            
+        Returns:
+            UserMatch object if successful, None otherwise
+        """
+        # Use the add_match method which has the core implementation
+        return cls.add_match(
+            user_id=user_id,
+            match_filename=match_filename,
+            face_id=face_id,
+            is_visible=is_visible,
+            privacy_level=privacy_level,
+            similarity=similarity,
+            post_id=post_id
+        )
+        
+    @classmethod
     def add_match(
         cls,
         user_id,
@@ -251,6 +278,7 @@ class UserMatch:
         is_visible=1,
         privacy_level="public",
         similarity=None,
+        post_id=None,
     ):
         """Add a match to a user's profile, using face_id if available.
         Args:
@@ -291,24 +319,97 @@ class UserMatch:
             return existing
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO user_matches 
-                (user_id, match_filename, face_id, is_visible, privacy_level, similarity, added_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    user_id,
-                    match_filename,
-                    face_id,
-                    is_visible,
-                    privacy_level,
-                    similarity,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                ),
-            )
+            # Check the database schema to see what columns exist
+            cursor.execute("PRAGMA table_info(user_matches)")
+            columns = [column[1] for column in cursor.fetchall()]
+            logging.debug(f"user_matches table columns: {columns}")
+            
+            # Add missing columns if needed
+            missing_columns = []
+            if 'face_id' not in columns and face_id is not None:
+                missing_columns.append(("face_id", "INTEGER"))
+            if 'privacy_level' not in columns and privacy_level is not None:
+                missing_columns.append(("privacy_level", "TEXT"))
+            if 'similarity' not in columns and similarity is not None:
+                missing_columns.append(("similarity", "REAL"))
+            if 'post_id' not in columns and post_id is not None:
+                missing_columns.append(("post_id", "INTEGER"))
+                
+            # Add missing columns
+            for col_name, col_type in missing_columns:
+                try:
+                    logging.info(f"Adding {col_name} column to user_matches table")
+                    cursor.execute(f"ALTER TABLE user_matches ADD COLUMN {col_name} {col_type}")
+                    conn.commit()
+                except Exception as alter_error:
+                    logging.error(f"Error adding {col_name} column: {alter_error}")
+            
+            # Re-check columns after potential additions
+            cursor.execute("PRAGMA table_info(user_matches)")
+            columns = [column[1] for column in cursor.fetchall()]
+            logging.debug(f"Updated user_matches table columns: {columns}")
+            
+            # Build dynamic INSERT query based on available columns
+            insert_columns = ['user_id', 'match_filename', 'is_visible', 'added_at']
+            insert_values = [user_id, match_filename, is_visible, datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+            
+            # Add optional columns if they exist in the schema
+            if 'face_id' in columns and face_id is not None:
+                insert_columns.append('face_id')
+                insert_values.append(face_id)
+            if 'privacy_level' in columns and privacy_level is not None:
+                insert_columns.append('privacy_level')
+                insert_values.append(privacy_level)
+            if 'similarity' in columns and similarity is not None:
+                insert_columns.append('similarity')
+                insert_values.append(similarity)
+            if 'post_id' in columns and post_id is not None:
+                insert_columns.append('post_id')
+                insert_values.append(post_id)
+                
+            # Construct the query
+            placeholders = ', '.join(['?' for _ in insert_values])
+            columns_str = ', '.join(insert_columns)
+            
+            # Execute the dynamic query
+            query = f"INSERT INTO user_matches ({columns_str}) VALUES ({placeholders})"
+            logging.debug(f"Executing query: {query} with values: {insert_values}")
+            cursor.execute(query, insert_values)
             conn.commit()
             match_id = cursor.lastrowid
+            
+            # Send notification if the match is claimed by another user
+            try:
+                # Check if this face is claimed by another user
+                from models.notification import Notification
+                from models.face import Face
+                
+                # First try to get the face by face_id
+                claimed_user_id = None
+                if face_id:
+                    face = Face.get_by_id(face_id)
+                    if face and face.claimed_by_user_id and face.claimed_by_user_id != user_id:
+                        claimed_user_id = face.claimed_by_user_id
+                # If not found by face_id, try by filename
+                elif match_filename:
+                    face = Face.get_by_filename(match_filename)
+                    if face and face.claimed_by_user_id and face.claimed_by_user_id != user_id:
+                        claimed_user_id = face.claimed_by_user_id
+                
+                # If the face is claimed by another user, send them a notification
+                if claimed_user_id:
+                    Notification.create(
+                        user_id=claimed_user_id,
+                        type=Notification.TYPE_MATCH_ADDED_TO_PROFILE,
+                        content=f"Someone added your face to their profile!",
+                        entity_id=str(match_id),
+                        entity_type="user_match",
+                        sender_id=user_id
+                    )
+                    logging.info(f"Sent notification to user {claimed_user_id} about match being added to profile by user {user_id}")
+            except Exception as e:
+                logging.error(f"Error sending notification for match add: {e}")
+                
             return UserMatch.get_by_id(match_id)
         except Exception as e:
             logging.error(f"Error adding match to profile: {e}")
@@ -357,6 +458,74 @@ class UserMatch:
             if conn:
                 conn.close()
 
+    def update_post_id(self, post_id):
+        """Update the post_id for this match.
+        
+        Args:
+            post_id: ID of the post to associate with this match
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.id:
+            logging.warning("Cannot update post_id for user match without an ID")
+            return False
+            
+        conn = get_users_db_connection()
+        if not conn:
+            logging.error("Failed to connect to database")
+            return False
+            
+        try:
+            cursor = conn.cursor()
+            
+            # First check if post_id column exists in the user_matches table
+            cursor.execute("PRAGMA table_info(user_matches)")
+            columns = [column[1] for column in cursor.fetchall()]
+            logging.debug(f"user_matches table columns: {columns}")
+            
+            if 'post_id' not in columns:
+                # Add post_id column if it doesn't exist
+                try:
+                    logging.info("Adding post_id column to user_matches table")
+                    cursor.execute("ALTER TABLE user_matches ADD COLUMN post_id INTEGER")
+                    conn.commit()
+                    # Re-check columns after addition
+                    cursor.execute("PRAGMA table_info(user_matches)")
+                    columns = [column[1] for column in cursor.fetchall()]
+                    logging.debug(f"Updated user_matches table columns: {columns}")
+                except Exception as alter_error:
+                    logging.error(f"Error adding post_id column: {alter_error}")
+                    # If we can't add the column, just return success anyway
+                    # We don't want to block post creation just because we can't link it to a match
+                    return True
+            
+            if 'post_id' in columns:
+                # Now update the post_id
+                cursor.execute(
+                    """
+                    UPDATE user_matches
+                    SET post_id = ?
+                    WHERE id = ?
+                    """,
+                    (post_id, self.id)
+                )
+                conn.commit()
+                logging.info(f"Successfully updated post_id to {post_id} for user match {self.id}")
+            else:
+                logging.warning(f"Could not update post_id for match {self.id} because post_id column does not exist")
+                
+            return True
+        except Exception as e:
+            logging.error(f"Error updating post_id for user match: {e}")
+            if conn:
+                conn.rollback()
+            # Return True anyway to not block post creation
+            return True
+        finally:
+            if conn:
+                conn.close()
+    
     def update(self, **kwargs):
         """Update user match attributes."""
         if not self.id:

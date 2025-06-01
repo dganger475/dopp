@@ -60,7 +60,7 @@ const LoadingState = () => {
         `}
       </style>
       <div style={{ fontWeight: 'bold', color: '#007bff' }}>
-        <FontAwesomeIcon icon={faSyncAlt} spin /> Finding your best matches...
+        <FontAwesomeIcon icon={faSyncAlt} spin /> Searching for matches
       </div>
     </div>
   );

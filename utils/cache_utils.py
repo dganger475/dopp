@@ -142,41 +142,37 @@ def clear_all_caches():
 
 
 def get_cache_value(key, default=None):
-    """Get a value from cache with error handling"""
+    """Get a value from the cache."""
     try:
-        return current_app.cache.get(key) or default
+        return current_app.extensions['cache'].get(key, default)
     except Exception as e:
-        current_app.logger.error(f"Cache get error for key {key}: {str(e)}")
+        logger.error(f"Cache get error for key {key}: {str(e)}")
         return default
 
 
 def set_cache_value(key, value, timeout=None):
-    """Set a value in cache with error handling"""
+    """Set a value in the cache."""
     try:
-        current_app.cache.set(key, value, timeout=timeout)
-        return True
+        current_app.extensions['cache'].set(key, value, timeout=timeout)
     except Exception as e:
-        current_app.logger.error(f"Cache set error for key {key}: {str(e)}")
-        return False
+        logger.error(f"Cache set error for key {key}: {str(e)}")
 
 
 def delete_cache_value(key):
-    """Delete a value from cache with error handling"""
+    """Delete a value from the cache."""
     try:
-        current_app.cache.delete(key)
-        return True
+        current_app.extensions['cache'].delete(key)
     except Exception as e:
-        current_app.logger.error(f"Cache delete error for key {key}: {str(e)}")
-        return False
+        logger.error(f"Cache delete error for key {key}: {str(e)}")
 
 
-def increment_cache_value(key, amount=1, timeout=None):
-    """Increment a counter in cache with error handling"""
+def increment_cache_value(key, timeout=None):
+    """Increment a value in the cache."""
     try:
-        current_value = get_cache_value(key, 0)
-        new_value = current_value + amount
-        set_cache_value(key, new_value, timeout=timeout)
-        return new_value
+        value = get_cache_value(key, 0)
+        value += 1
+        set_cache_value(key, value, timeout=timeout)
+        return value
     except Exception as e:
-        current_app.logger.error(f"Cache increment error for key {key}: {str(e)}")
+        logger.error(f"Cache increment error for key {key}: {str(e)}")
         return 0

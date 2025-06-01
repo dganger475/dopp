@@ -1,0 +1,185 @@
+.matchCard {
+  width: 140px;
+  height: 240px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 12px;
+  margin: 0 4px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  color: #333333;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  animation: fadeIn 0.5s ease forwards;
+  opacity: 0;
+  transform: translateY(10px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.animating {
+  animation: shareToFeed 0.5s ease forwards;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.userImageSection {
+  margin-top: 36px;
+  width: 120px;
+  height: 120px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userImage {
+  width: 120px;
+  height: 120px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 2px solid #e0e0e0;
+}
+
+.fallbackImage {
+  width: 120px;
+  height: 120px;
+  border-radius: 18px;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #666666;
+  border: 2px solid #e0e0e0;
+}
+
+.username {
+  margin-top: 8px;
+  width: auto;
+  min-width: 96px;
+  max-width: 120px;
+  height: 24px;
+  background-color: #1b74e4;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.usernameText {
+  color: #ffffff;
+  font-size: 15px;
+  font-family: Arial, sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+  padding: 0 4px;
+}
+
+.matchInfo {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.matchId {
+  font-size: 16px;
+  font-weight: bold;
+  color: #1b74e4;
+  text-align: center;
+  padding: 4px 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.similarityScore {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  padding: 4px 8px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.matchDetails {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.matchInfo {
+  color: #333333;
+  font-size: 14px;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 1px 6px;
+  border-radius: 3px;
+  min-width: 50px;
+}
+
+.unclaimedBanner {
+  width: 130px;
+  height: 24px;
+  background-color: #1b74e4;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.bannerText {
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+  white-space: nowrap;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shareToFeed {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+} 

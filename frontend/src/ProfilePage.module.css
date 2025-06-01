@@ -4,65 +4,445 @@
   font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
   color: #222;
   box-sizing: border-box;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.profileHeader {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  min-height: 100vh;
+  position: relative;
+  margin-bottom: 20px;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.profileInfo {
+  flex: 1;
+  position: relative;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-top: 20px;
+}
+
+.coverPhotoContainer {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .coverPhoto {
   width: 100%;
-  height: 220px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border-radius: 20px 20px 0 0;
-  position: relative;
-  z-index: 1;
-  margin-bottom: -40px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-  display: block !important;
-  visibility: visible !important;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 0.3s ease;
+}
+
+.coverPhoto.loaded {
+  opacity: 1;
 }
 
 .matchesFoundText {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  font-size: 1.12rem;
-  color: #222;
-  background: #fff;
-  padding: 10px 0 14px 0;
+  font-size: 0.9rem;
   font-weight: bold;
-  z-index: 100;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
-  margin: 0;
+  color: white;
+  background-color: var(--dopple-blue);
+  border-radius: 50%;
+  transform: rotate(10deg);
+  z-index: 50;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
+  padding: 15px;
 }
 
+.profile-page .profileContainer {
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  position: relative !important;
+  background: white !important;
+  min-height: 100vh !important;
+  font-family: Arial, sans-serif !important;
+}
 
-.profileImageContainer {
-  position: absolute;
-  left: 50%;
-  top: 190px;
-  transform: translateX(-50%);
-  z-index: 2;
-  background: #fff;
-  border-radius: 24px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-  padding: 12px;
-  width: 148px;
-  height: 148px;
+/* Cover Photo */
+.profile-page .coverPhotoContainer {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+  background: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.coverPhoto {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Profile Content */
+.profileContent {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+/* Left Column */
+.leftColumn {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: none;
+  margin-top: -60px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
 }
 
-body, .profile-page, .profile-page * {
-  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif !important;
+.profileImageWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-top: -20px; /* Overlaps the cover photo slightly */
+  margin-bottom: 20px;
+  z-index: 3;
+  width: 100%;
+}
+
+.profileImageContainer {
+  width: 180px;
+  height: 180px;
+  margin-bottom: 0;
+  position: relative;
+  display: inline-block; /* Change from flex to inline-block */
+}
+
+.usernameContainer {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.usernamePill {
+  background: rgba(51, 51, 51, 0.95);
+  border-radius: 20px;
+  padding: 8px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 120px;
+  max-width: 200px;
+  transition: all 0.2s ease;
+}
+
+.usernamePill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.usernamePillText {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+  font-family: Arial, sans-serif;
+}
+
+.matchesBadge {
+  text-align: center;
+  background: white;
+  padding: 10px 30px;
+  border-radius: 25px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+  margin: 0 auto 20px;
+  position: relative;
+  z-index: 2;
+  font-weight: 500;
+}
+
+.matchesCount {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.matchesLabel {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Right Column */
+.rightColumn {
+  width: 100%;
+  background: transparent;
+  padding: 0 20px;
+  text-align: center;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.profileHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  position: relative;
+  padding: 0 20px;
+}
+
+.memberSinceSide {
+  position: absolute;
+  left: 20px;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  line-height: 1.1;
+  font-family: Arial, sans-serif;
+}
+
+.memberSinceLabel {
+  font-size: 0.7rem;
+  color: #666;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.memberSinceDate {
+  font-size: 0.75rem;
+  color: #444;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.username {
+  font-size: 1.8rem;
+  margin: 0 0 5px 0;
+  color: #333;
+  font-weight: 600;
+}
+
+.memberSince {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.username {
+  font-size: 1.8rem;
+  margin: 0 0 5px 0;
+  color: #333;
+}
+
+.memberSince {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Bio Section */
+.bioSection {
+  margin: -10px auto 20px; /* Negative margin to move it up */
+  padding: 0 20px;
+  max-width: 600px;
+  text-align: center;
+  position: relative;
+  z-index: 5;
+}
+
+.locationContainer {
+  position: absolute;
+  right: 20px;
+  top: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  line-height: 1.1;
+  font-family: Arial, sans-serif;
+  font-size: 0.75rem;
+  color: #444;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.currentCity {
+  color: #333;
+  font-size: 1rem;
+  font-weight: 700; /* Made bolder */
+  text-align: center;
+  padding: 2px 0;
+  display: inline-block;
+  letter-spacing: 0.3px; /* Slight letter spacing for better readability */
+}
+
+.bioText {
+  color: #555;
+  line-height: 1.6;
+  font-size: 1rem;
+  margin-top: 10px;
+}
+
+.bioSection h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.bioText {
+  color: white;
+  line-height: 1.6;
+  font-size: 1.1rem;
+  margin-top: 10px;
+  font-family: Arial, sans-serif;
+}
+
+/* Info Section */
+.infoSection {
+  margin: 20px auto;
+  max-width: 500px;
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.infoRow {
+  display: flex;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.infoLabel {
+  width: 120px;
+  color: #666;
+  font-weight: 500;
+}
+
+.infoValue {
+  color: #333;
+}
+
+/* Action Buttons */
+.actionButtons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 30px auto;
+  max-width: 500px;
+  padding: 0 20px;
+}
+
+.editButton,
+.addMatchButton {
+  padding: 10px 20px;
+  border: 2px solid #000000 !important;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editButton {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.addMatchButton {
+  background: #555555;
+  color: white;
+}
+
+.editButton:hover {
+  background: #e0e0e0;
+}
+
+.addMatchButton:hover {
+  background: #666666; /* Slightly lighter grey on hover */
+}
+
+/* Matches Section */
+.matchesSection {
+  background: white;
+  border-radius: 15px 15px 0 0;
+  padding: 25px 20px;
+  margin-top: 40px;
+  position: relative;
+  z-index: 1;
+  min-height: 200px;
+}
+
+.matchesSection h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+}
+
+.matchesSection h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
+  color: #333;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+/* Loading and Error States */
+.loading,
+.error,
+.noMatches {
+  text-align: center;
+  padding: 30px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  color: #666;
+  font-style: italic;
+}
+
+.error {
+  color: #d32f2f;
+  background: #ffebee;
 }
 
 .profileImage {
@@ -124,96 +504,34 @@ body, .profile-page, .profile-page * {
   pointer-events: none;
 }
 
-.profileHeaderBar {
+.profileHeaderBar.infoRow {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-top: 24px;
-  margin-bottom: 0;
-}
-
-@media (max-width: 600px) {
-  .profileHeaderBar {
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 18px;
-  }
-}
-
-
-
-.addMatchBtn {
-  font-size: 0.92rem;
-  padding: 6px 14px;
-  border: 2px solid #111;
+  justify-content: space-between;
+  margin: 16px 10px;
+  padding: 10px;
+  font-size: 0.9rem;
+  background-color: #f8f8f8;
   border-radius: 8px;
-  background: #fff;
-  color: #111;
-  min-width: 0;
-  min-height: 0;
-  margin-right: 10px;
-  box-shadow: none;
 }
 
-.fixedAddMatchBtn {
-  position: fixed;
-  top: 60px;
-  left: 16px;
-  z-index: 1001;
-  font-size: 0.76rem;
-  padding: 3px 8px;
-  border: 1px solid #000;
-  border-radius: 5px;
-  background: #fff;
-  color: #111;
-  box-shadow: none;
-  display: block !important;
-  visibility: visible !important;
+.memberSinceContainer {
+  flex: 1;
+  text-align: left;
 }
 
-.fixedEditProfileBtn {
-  position: fixed;
-  top: 60px;
-  right: 16px;
-  z-index: 1001;
-  font-size: 0.76rem;
-  padding: 3px 8px;
-  border: 1px solid #000;
-  border-radius: 5px;
-  background: #fff;
-  color: #111;
-  box-shadow: none;
-  display: block !important;
-  visibility: visible !important;
+.memberSinceLabel {
+  font-weight: bold;
+  color: #333;
 }
 
-
-.editProfileBtn {
-  font-size: 0.98rem;
-  padding: 7px 16px;
-  border: 2px solid #111;
-  border-radius: 8px;
-  background: #fff;
-  color: #111;
-  min-width: 0;
-  min-height: 0;
-  margin-left: 10px;
-  box-shadow: none;
+.locationContainer {
+  flex: 1;
+  text-align: right;
 }
 
-
-.coverPhotoWrapper {
-  position: relative;
-  width: 100%;
-}
-
-.usernamePillRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 8px;
-  margin-bottom: 0;
+.locationLabel {
+  font-weight: bold;
+  color: #333;
 }
 
 .infoRow {
@@ -372,34 +690,23 @@ body, .profile-page, .profile-page * {
 }
 
 .bioSection {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 18px;
-  margin-bottom: 0;
-  min-height: 48px;
-  max-width: 380px;
-  width: auto;
-  margin-left: auto;
-  margin-right: auto;
-  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-  background: #222;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.16);
-  padding: 16px 20px;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  transition: min-height 0.2s;
+  margin: 12px 10px 24px 10px;
+  width: calc(100% - 20px);
+  padding: 8px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+}
+
+.bioLabel {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #333;
 }
 
 .bioSection, .bioSection * {
-  color: #fff !important;
+  color: #333 !important;
   font-size: 1.07rem;
   text-align: center;
-}
-
-.bioSection, .bioSection * {
-  color: #fff !important;
 }
 
 .bioSection h3, .detailsSection h3 {
@@ -409,14 +716,14 @@ body, .profile-page, .profile-page * {
 }
 
 .matchesSection {
-  padding-bottom: 60px;
-  padding-top: 320px;
+  position: relative;
+  padding: 24px;
+  padding-bottom: 40px;
   background: var(--dopple-white);
   border-radius: 12px;
-  padding: 24px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  margin: 0 10px;
 }
-
 
 .matchesGrid {
   display: grid;
@@ -431,4 +738,65 @@ body, .profile-page, .profile-page * {
   color: var(--dopple-black);
   font-size: 1.1rem;
   text-align: center;
+}
+
+/* Image loading styles */
+.imageLoading {
+  position: relative;
+  overflow: hidden;
+}
+
+.imageLoading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.5s infinite;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Progressive image loading */
+.progressiveImage {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.progressiveImage.loaded {
+  opacity: 1;
+}
+
+/* Image container styles */
+.imageContainer {
+  position: relative;
+  overflow: hidden;
+  background-color: #f0f0f0;
+}
+
+/* Loading placeholder */
+.loadingPlaceholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+  z-index: 2;
 }

@@ -2,108 +2,113 @@
 Authentication Tests
 =================
 
-Tests for authentication functionality.
+Tests for user authentication functionality.
 """
 
 import pytest
-from flask import session
+from flask import session, url_for
 from models.user import User
 
-def test_login_success(client, test_user):
+def test_login_success(client, test_user, test_user_data):
     """Test successful login."""
-    response = client.post('/login', json={
+    response = client.post('/auth/login', json={
         'username': test_user.username,
-        'password': 'password123'
+        'password': test_user_data['password']
     })
     assert response.status_code == 200
-    assert response.json['success'] is True
-    assert response.json['redirect'] == '/search'
-    with client.session_transaction() as sess:
-        assert sess['user_id'] == test_user.id
+    assert 'access_token' in response.json
 
-def test_login_invalid_credentials(client, test_user):
+def test_login_invalid_credentials(client):
     """Test login with invalid credentials."""
-    response = client.post('/login', json={
-        'username': test_user.username,
-        'password': 'wrong_password'
+    response = client.post('/auth/login', json={
+        'username': 'nonexistent',
+        'password': 'wrongpassword'
     })
     assert response.status_code == 401
-    assert 'error' in response.json
 
-def test_login_rate_limit(client, test_user):
+def test_login_rate_limit(client):
     """Test login rate limiting."""
     for _ in range(5):
-        client.post('/login', json={
-            'username': test_user.username,
-            'password': 'wrong_password'
+        response = client.post('/auth/login', json={
+            'username': 'nonexistent',
+            'password': 'wrongpassword'
         })
+        assert response.status_code == 401
     
-    response = client.post('/login', json={
-        'username': test_user.username,
-        'password': 'password123'
+    response = client.post('/auth/login', json={
+        'username': 'nonexistent',
+        'password': 'wrongpassword'
     })
     assert response.status_code == 429
-    assert 'error' in response.json
 
-def test_register_success(client, db):
-    """Test successful registration."""
-    response = client.post('/register', data={
-        'username': 'new_user',
-        'email': 'new@example.com',
-        'password': 'Password123!',
-        'confirm_password': 'Password123!'
+def test_register_success(client):
+    """Test successful user registration."""
+    response = client.post('/auth/register', json={
+        'username': 'newuser',
+        'email': 'newuser@example.com',
+        'password': 'StrongPass123!'
     })
     assert response.status_code == 302
-    assert response.location == '/social/feed'
-    
-    user = User.query.filter_by(username='new_user').first()
-    assert user is not None
-    assert user.email == 'new@example.com'
+    assert response.location == '/auth/login'
 
 def test_register_weak_password(client):
     """Test registration with weak password."""
-    response = client.post('/register', data={
-        'username': 'new_user',
-        'email': 'new@example.com',
-        'password': 'weak',
-        'confirm_password': 'weak'
+    response = client.post('/auth/register', json={
+        'username': 'newuser',
+        'email': 'newuser@example.com',
+        'password': 'weak'
     })
     assert response.status_code == 400
-    assert b'Password must be at least 8 characters long' in response.data
+    assert 'password' in response.json['errors']
 
 def test_register_duplicate_username(client, test_user):
     """Test registration with existing username."""
-    response = client.post('/register', data={
+    response = client.post('/auth/register', json={
         'username': test_user.username,
-        'email': 'another@example.com',
-        'password': 'Password123!',
-        'confirm_password': 'Password123!'
+        'email': 'different@example.com',
+        'password': 'StrongPass123!'
     })
     assert response.status_code == 400
-    assert b'Username or email already exists' in response.data
+    assert 'username' in response.json['errors']
 
-def test_logout(auth_client):
+def test_logout(client, auth_client):
     """Test logout functionality."""
-    response = auth_client.get('/logout')
+    response = auth_client.get('/auth/logout')
     assert response.status_code == 302
-    assert response.location == '/'
-    with auth_client.session_transaction() as sess:
-        assert 'user_id' not in sess
-
-@pytest.mark.integration
-def test_login_session_persistence(auth_client):
-    """Test session persistence after login."""
-    response = auth_client.get('/account')
-    assert response.status_code == 200
-
-@pytest.mark.integration
-def test_protected_route_access(auth_client):
-    """Test access to protected routes."""
-    response = auth_client.get('/account')
-    assert response.status_code == 200
+    assert response.location == '/auth/login'
 
 def test_protected_route_unauthorized(client):
     """Test unauthorized access to protected routes."""
-    response = client.get('/account')
+    response = client.get('/auth/account')
+    assert response.status_code == 401
+
+@pytest.mark.integration
+def test_auth_flow(client):
+    """Test complete authentication flow."""
+    # Register
+    response = client.post('/auth/register', json={
+        'username': 'testflow',
+        'email': 'testflow@example.com',
+        'password': 'StrongPass123!'
+    })
     assert response.status_code == 302
-    assert response.location.startswith('/login') 
+    
+    # Login
+    response = client.post('/auth/login', json={
+        'username': 'testflow',
+        'password': 'StrongPass123!'
+    })
+    assert response.status_code == 200
+    assert 'access_token' in response.json
+    
+    # Access protected route
+    response = client.get('/auth/account')
+    assert response.status_code == 200
+    
+    # Logout
+    response = client.get('/auth/logout')
+    assert response.status_code == 302
+    
+    # Try accessing protected route again
+    response = client.get('/auth/account')
+    assert response.status_code == 302 

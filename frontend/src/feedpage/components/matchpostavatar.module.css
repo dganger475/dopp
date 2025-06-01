@@ -1,0 +1,49 @@
+.avatarContainer {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.avatarContainer:hover .avatar {
+  transform: scale(1.1);
+}
+
+/* Error state styles */
+.avatarContainer.error {
+  background-color: #fef2f2;
+  border: 2px solid #ef4444;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .avatarContainer {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.avatarContainer {
+  animation: fadeIn 0.3s ease-out;
+} 

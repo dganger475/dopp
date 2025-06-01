@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 from abc import ABC, abstractmethod
+import b2sdk.v2 as b2
 
 from flask import current_app, url_for
 from werkzeug.utils import secure_filename
@@ -308,13 +309,118 @@ class S3Storage(StorageBackend):
             return False
 
 
+class B2Storage(StorageBackend):
+    """Backblaze B2 storage backend."""
+
+    def __init__(self, application_key_id=None, application_key=None, bucket_name=None):
+        """
+        Initialize B2 storage.
+
+        Args:
+            application_key_id: B2 application key ID
+            application_key: B2 application key
+            bucket_name: B2 bucket name
+        """
+        self.application_key_id = application_key_id or os.getenv('B2_APPLICATION_KEY_ID')
+        self.application_key = application_key or os.getenv('B2_APPLICATION_KEY')
+        self.bucket_name = bucket_name or os.getenv('B2_BUCKET_NAME')
+        
+        if not all([self.application_key_id, self.application_key, self.bucket_name]):
+            raise ValueError("B2 credentials not properly configured")
+        
+        # Initialize B2 client
+        self.info = b2.InMemoryAccountInfo()
+        self.b2_api = b2.B2Api(self.info)
+        self.b2_api.authorize_account("production", self.application_key_id, self.application_key)
+        self.bucket = self.b2_api.get_bucket_by_name(self.bucket_name)
+
+    def _get_key(self, filename, folder=None):
+        """Get the B2 key for a file."""
+        if folder:
+            return f"{folder}/{filename}"
+        return filename
+
+    def save(self, file_obj, filename, folder=None):
+        """
+        Save a file to B2 storage.
+
+        Args:
+            file_obj: The file object to save
+            filename: The filename to use
+            folder: The folder to save to (optional)
+
+        Returns:
+            tuple: (success, filepath or error_message)
+        """
+        try:
+            # Ensure filename is secure
+            filename = secure_filename(filename)
+
+            # Get the B2 key
+            key = self._get_key(filename, folder)
+
+            # Upload the file
+            self.bucket.upload_bytes(
+                file_obj.read(),
+                key,
+                content_type=file_obj.content_type
+            )
+
+            return True, key
+        except Exception as e:
+            logger.error(f"Error saving file to B2: {e}")
+            return False, str(e)
+
+    def get_url(self, filename, folder=None):
+        """
+        Get the URL for a file in B2 storage.
+
+        Args:
+            filename: The filename to get the URL for
+            folder: The folder the file is in (optional)
+
+        Returns:
+            str: The URL for the file
+        """
+        try:
+            key = self._get_key(filename, folder)
+            # Get a download URL that's valid for 1 hour
+            download_url = self.bucket.get_download_url(key)
+            return download_url
+        except Exception as e:
+            logger.error(f"Error getting URL for file: {e}")
+            return ""
+
+    def delete(self, filename, folder=None):
+        """
+        Delete a file from B2 storage.
+
+        Args:
+            filename: The filename to delete
+            folder: The folder the file is in (optional)
+
+        Returns:
+            bool: True if the file was deleted, False otherwise
+        """
+        try:
+            key = self._get_key(filename, folder)
+            file_version = self.bucket.get_file_info_by_name(key)
+            if file_version:
+                self.bucket.delete_file_version(file_version.id_, file_version.file_name)
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting file from B2: {e}")
+            return False
+
+
 # Factory function to get the appropriate storage backend
 def get_storage(storage_type=None):
     """
     Get a storage backend.
 
     Args:
-        storage_type: The type of storage to use ('local' or 's3')
+        storage_type: The type of storage to use ('local' or 's3' or 'b2')
 
     Returns:
         StorageBackend: A storage backend instance
@@ -324,6 +430,8 @@ def get_storage(storage_type=None):
 
     if storage_type.lower() == "s3":
         return S3Storage()
+    elif storage_type.lower() == "b2":
+        return B2Storage()
     else:
         return LocalStorage()
 

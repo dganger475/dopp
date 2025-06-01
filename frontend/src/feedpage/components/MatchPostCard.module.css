@@ -1,0 +1,344 @@
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.matchPostCard {
+  width: 100%;
+  max-width: 400px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 2px solid #000000;
+  box-shadow: rgba(0, 0, 0, 0.4) 0px 12px 32px, rgba(0, 0, 0, 0.3) 0px 6px 16px, rgba(0, 0, 0, 0.2) 0px 3px 8px;
+  margin: 16px auto;
+  padding: 12px;
+  font-family: Arial, sans-serif;
+  position: relative;
+  color: #333333;
+  animation: slideIn 0.3s ease-out;
+}
+
+.placeholder {
+  padding: 16px;
+  margin: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.placeholder p {
+  color: #666;
+  text-align: center;
+}
+
+.authorInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.authorAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #000000;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 8px 16px, rgba(0, 0, 0, 0.2) 0px 4px 8px;
+}
+
+.authorDetails {
+  flex: 1;
+}
+
+.authorName {
+  font-weight: 700;
+  font-size: 18px;
+  color: #333333;
+  letter-spacing: 0.3px;
+}
+
+.postDate {
+  color: #666666;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  margin-top: 2px;
+}
+
+.matchBanner {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 8px 12px;
+  margin: 0 0 12px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  border-radius: 8px;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 8px 16px, rgba(0, 0, 0, 0.2) 0px 4px 8px;
+}
+
+.postContent {
+  color: #333333;
+  padding: 0 16px 16px 16px;
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+  font-weight: 500;
+}
+
+.facesRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 16px 0;
+}
+
+.userFaceContainer, .matchFaceContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #007bff;
+  padding: 8px;
+  border-radius: 16px;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 12px;
+}
+
+.userFace, .matchFace {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid #ffffff;
+  background: #fff;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.faceLabel {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #0056b3;
+  border-radius: 6px;
+  padding: 2px 12px;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.matchCardContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 160px;
+}
+
+.interactions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 8px 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.interactionButton {
+  background: none;
+  border: none;
+  color: #666666;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.interactionButton:hover {
+  color: #333333;
+}
+
+.interactionButton.liked {
+  color: #ff4444;
+}
+
+.interactionButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.commentsSection {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.comment {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.comment:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.commentAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #dee2e6;
+}
+
+.commentContent {
+  flex: 1;
+}
+
+.commentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.commentUsername {
+  font-weight: 600;
+  font-size: 14px;
+  color: #212529;
+}
+
+.commentDate {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.commentText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #495057;
+}
+
+.noComments {
+  text-align: center;
+  color: #6c757d;
+  font-size: 14px;
+  padding: 12px;
+}
+
+@media (max-width: 768px) {
+  .matchPostCard {
+    margin: 12px 8px;
+    padding: 10px;
+  }
+
+  .authorAvatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .authorName {
+    font-size: 16px;
+  }
+
+  .postDate {
+    font-size: 12px;
+  }
+
+  .matchBanner {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .postContent {
+    font-size: 14px;
+    padding: 0 12px 12px 12px;
+  }
+
+  .interactions {
+    gap: 12px;
+  }
+
+  .interactionButton {
+    font-size: 12px;
+  }
+
+  .facesRow {
+    gap: 16px;
+    margin: 12px 0;
+  }
+
+  .userFace, .matchFace {
+    width: 120px;
+    height: 120px;
+    border-radius: 10px;
+  }
+
+  .faceLabel {
+    font-size: 12px;
+    padding: 2px 8px;
+  }
+
+  .matchCardContainer {
+    max-width: 100px;
+  }
+
+  .commentsSection {
+    padding: 8px;
+    max-height: 250px;
+  }
+
+  .comment {
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+  }
+
+  .commentAvatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .commentUsername {
+    font-size: 13px;
+  }
+
+  .commentDate {
+    font-size: 11px;
+  }
+
+  .commentText {
+    font-size: 13px;
+  }
+
+  .noComments {
+    font-size: 13px;
+    padding: 8px;
+  }
+} 

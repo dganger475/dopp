@@ -1,430 +1,465 @@
-# Dopp - Face Matching Application
+# DoppleGänger
 
-A modern web application for finding face matches, with a Flask backend and React frontend. The application allows users to register, upload profile images, and find other users or historical images that look similar to them.
+## Overview
+DoppleGänger is a full-stack web application for social discovery, face matching, and historical doppelgänger exploration. Users can register, upload photos, find matches, interact with posts, and connect with others in a secure, modern environment.
 
-## Recent Enhancements (May 2025)
-
-### Search Page UI Improvements
-We've recently refactored and enhanced the Search Page component to improve both functionality and user experience:
-
-1. **Modular Component Structure**:
-   - Split large SearchPage.jsx into smaller, focused components (CardResult.jsx, LoadingState.jsx, EmptyState.jsx)
-   - Improved code maintainability and readability
-   - Each component now handles a specific UI element with clear responsibilities
-
-2. **User Card Styling**:
-   - Implemented distinct card styles for different user types:
-     - User Card: Black background with blue border and blue pills
-     - Registered User Cards: Red background with black border, "REGISTERED USER" pill at top, username pill below image
-     - Unclaimed Profile Cards: Blue background with black border, "UNCLAIMED PROFILE" pill at top
-   - All cards use Arial font and 5.3px borders for visual consistency
-   - Added proper card snapping behavior when scrolling in the carousel
-
-3. **Visual Enhancements**:
-   - Match percentage badges on cards with color coding based on match strength
-   - Visual scroll indicators with right arrow navigation
-   - Smooth keyboard navigation using arrow keys
-   - Improved loading states with placeholder cards
-   - Empty state message when no matches are found
-
-4. **Bug Fixes**:
-   - Fixed image display for registered users
-   - Ensured usernames properly display for registered users
-   - Corrected button positioning and styling
-   - Restricted carousel to horizontal scrolling only
-
-### Current Status
-
-The application is functional with the following key features implemented:
-
-- User registration and authentication
-- Profile image uploading and processing
-- Face matching search functionality
-- Enhanced search results UI with visual indicators
-- Responsive design for different screen sizes
-
-## For Future Developers
-
-### Architecture Overview
-- **Backend**: Flask application with SQLite database (faces.db)
-- **Frontend**: React application with component-based architecture
-- **Face Matching**: FAISS vector database for efficient similarity searching
-
-### Important Files and Directories
-- `/frontend/src/components/` - Reusable UI components
-- `/frontend/src/searchPage/` - Search page implementation
-- `manual_rebuild_faiss.py` - Script to rebuild the FAISS index
-
-### Styling Guidelines
-1. **Card Design**:
-   - User Card: Black background with blue border and blue pills
-   - Registered User Cards: Red background with black border
-   - Unclaimed Profile Cards: Blue background with black border
-   - All cards use Arial font and 5.3px borders
-
-2. **Component Structure**:
-   - Component files should be focused on a single responsibility
-   - Reusable UI elements should be placed in the components directory
-   - Page-specific components should be in their respective page directories
-
-### Known Issues and Future Work
-1. **Username Display**: There are ongoing issues with displaying usernames for registered users. The current implementation hard-codes "@Profile #103" as a temporary solution.
-
-2. **Image Loading**: The application sometimes has issues loading profile images, particularly for registered users. The current implementation uses error handlers to attempt multiple image sources.
-
-3. **Carousel Navigation**: The horizontal scrolling and card snapping behavior works, but could be improved for smoother transitions.
-
-4. **Data Fetching**: The application could benefit from implementing a more robust data fetching approach, potentially using React Query or similar solutions.
-
-### Development Tips
-1. **Console Logging**: Added extensive console logging for debugging username and image issues. Check browser console when making changes to these features.
-
-2. **Testing Changes**: When modifying the Search Page, test with both registered and unregistered users to ensure styling remains consistent.
-
-3. **Mobile Responsiveness**: Ensure any UI changes maintain responsiveness for mobile devices.
-
-## Table of Contents
-- [Features](#features)
-- [Setup](#setup)
-- [Development Tools](#development-tools)
-- [Testing](#testing)
-- [Code Quality](#code-quality)
-- [Configuration](#configuration)
-- [Security Features](#security-features)
-- [Performance Features](#performance-features)
-- [Debugging Tools](#debugging-tools)
-- [Profiling Tools](#profiling-tools)
-- [Mock Data Generation](#mock-data-generation)
-- [CLI Commands](#cli-commands)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
+---
 
 ## Features
+- User registration, authentication, and profile management
+- Face upload, matching, and historical doppelgänger discovery
+- Social feed with posts, comments, likes, and notifications
+- Search and discover users and matches
+- Admin dashboard and moderation tools
+- Responsive frontend (React + Vite)
+- RESTful API (Flask)
+- SQLite database (default, can be swapped for Postgres/MySQL)
+- Dockerized for easy deployment
+- Caching, rate limiting, and security best practices
 
-### Security
-- CSRF protection with customizable settings
-- Password complexity requirements and validation
-- Rate limiting on sensitive routes
-- Secure session management with configurable timeouts
-- Secure file upload handling with type validation
-- XSS prevention through input sanitization
-- Security headers (HSTS, CSP, etc.)
-- Input validation and sanitization utilities
+---
 
-### Performance
-- Database connection pooling with SQLAlchemy
-- Query optimization and monitoring
-- Redis caching support with fallback
-- Optimized file upload handling
-- Image processing improvements
-- Request profiling and monitoring
+## Directory Structure
+
+```
+Dopp/
+├── app.py                # Flask app factory
+├── run.py                # Main entry point
+├── config.py             # App configuration
+├── requirements.txt      # Python dependencies
+├── Dockerfile            # Docker build file
+├── docker-compose.yml    # Docker Compose config
+├── models/               # SQLAlchemy models (User, Post, Comment, etc.)
+├── routes/               # Flask blueprints (auth, social, api, etc.)
+├── forms/                # WTForms definitions
+├── utils/                # Utility modules (db, cache, image, etc.)
+├── services/             # Service layer (business logic)
+├── static/               # Static files (images, CSS, JS)
+├── templates/            # Jinja2 templates
+├── tests/                # Pytest test suite
+├── migrations/           # Alembic migrations
+├── frontend/             # React frontend (see below)
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── components/
+│       ├── feedpage/
+│       ├── loginpage/
+│       ├── profilepage/
+│       ├── edit_profile_new/
+│       ├── searchPage/
+│       ├── welcomepage/
+│       ├── registrationpage/
+│       ├── notificationspage/
+│       ├── comparisonpage/
+│       └── ...
+└── ...
+```
+
+---
+
+## Setup & Installation
+
+### Prerequisites
+- Python 3.9+
+- Node.js 18+
+- (Optional) Docker & Docker Compose
+
+### Backend Setup
+```bash
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+cp .env.example .env  # Edit as needed
+python run.py  # or flask run
+```
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev  # For development
+```
+
+---
+
+## Environment Variables & Configuration
+- See `.env.example` for all available settings.
+- Key variables:
+  - `SECRET_KEY`, `SQLALCHEMY_DATABASE_URI`, `UPLOAD_FOLDER`, etc.
+- For production, set secure values and use a production-ready database.
+
+---
+
+## Running the App
 
 ### Development
-- Comprehensive testing setup
-- Code quality checks
-- Pre-commit hooks
-- Type checking
-- Detailed documentation
-- Development utilities package
+- Backend: `python run.py` or `flask run`
+- Frontend: `cd frontend && npm run dev`
+- Visit: [http://localhost:5173](http://localhost:5173) (frontend)
 
-## Setup
+### Production
+- Use `gunicorn` or `uwsgi` for backend
+- Use `npm run build` and serve `frontend/dist` with Nginx or similar
+- Or use Docker:
+  ```bash
+  docker-compose up --build
+  ```
 
-1. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   venv\Scripts\activate     # Windows
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up pre-commit hooks:
-   ```bash
-   pre-commit install
-   ```
-
-4. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your settings
-   ```
-
-5. Initialize the development environment:
-   ```bash
-   flask dev setup-dev
-   ```
-
-6. Create mock data (optional):
-   ```bash
-   flask dev create-mock-data
-   ```
-
-7. Run the development server:
-   ```bash
-   flask run
-   ```
-
-## Development Tools
-
-### Debug Utilities (`utils/dev/debug.py`)
-- `debug_info()`: Get comprehensive application state information
-- `log_request_info`: Decorator for detailed request logging
-- `debug_view`: Debug endpoint registration
-- `setup_debug_logging`: Configure detailed debug logging
-
-Example usage:
-```python
-from utils.dev.debug import debug_info, log_request_info
-
-@log_request_info
-def my_route():
-    state = debug_info()
-    return jsonify(state)
-```
-
-### Profiling Tools (`utils/dev/profiling.py`)
-- `profile_function`: Decorator for function profiling
-- `profile_request`: Decorator for request profiling
-- `Profiler`: Context manager for code block profiling
-
-Example usage:
-```python
-from utils.dev.profiling import profile_function, Profiler
-
-@profile_function
-def expensive_operation():
-    # Your code here
-    pass
-
-with Profiler("my-operation"):
-    # Code to profile
-    pass
-```
-
-### Testing Utilities (`utils/dev/testing.py`)
-- `MockDataGenerator`: Generate realistic test data
-- `create_test_data`: Populate database with test data
-- Random data generation utilities
-
-Example usage:
-```python
-from utils.dev.testing import MockDataGenerator
-
-# Generate mock users
-users = MockDataGenerator.users(count=5)
-
-# Generate mock posts for a user
-posts = MockDataGenerator.posts(user_id=1, count=3)
-```
+---
 
 ## Testing
+- Backend: `pytest tests/`
+- Frontend: `cd frontend && npm test`
 
-Run the test suite:
-```bash
-pytest
-```
-
-Run with coverage:
-```bash
-pytest --cov=app tests/
-```
-
-Additional testing features:
-- `--run-slow`: Run slow tests
-- `--run-integration`: Run integration tests
-- `--pdb`: Drop into debugger on failures
-- `--trace`: Enter debugger at start of test
-
-## Code Quality
-
-The project uses several tools to maintain code quality:
-
-### Black
-- Code formatting
-- Line length: 88 characters
-- Configuration in `pyproject.toml`
-
-### Flake8
-- Style guide enforcement
-- Docstring checking
-- Complexity checking
-
-### MyPy
-- Static type checking
-- Strict mode enabled
-- Configuration in `pyproject.toml`
-
-### isort
-- Import sorting
-- Black-compatible settings
-- Configuration in `pyproject.toml`
-
-### Pre-commit Hooks
-- Automatic code formatting
-- Style checking
-- Type checking
-- Security checks
-- Configuration in `.pre-commit-config.yaml`
-
-## Configuration
-
-The application supports different environments:
-
-### Development (`config/development.py`)
-- Debug mode enabled
-- Detailed logging
-- SQL query logging
-- Development tools enabled
-- Mock email sending
-- Auto-reload templates
-
-### Testing (`config/testing.py`)
-- Testing mode enabled
-- In-memory database
-- Disabled CSRF
-- Suppressed emails
-
-### Production (`config/production.py`)
-- Debug disabled
-- Production-level logging
-- Redis caching
-- Secure cookie settings
-- Email sending enabled
-
-## CLI Commands
-
-Development commands available through `flask dev`:
-
-### Environment Setup
-```bash
-flask dev setup-dev  # Set up development environment
-flask dev create-mock-data  # Create mock data
-```
-
-### Information
-```bash
-flask dev show-routes  # List all registered routes
-flask dev show-config  # Show current configuration
-flask dev debug-check  # Run debug checks
-```
-
-### Maintenance
-```bash
-flask dev clear-logs  # Clear log files
-```
-
-## Debugging Tools
-
-### Debug Toolbar
-- Request timing
-- SQL queries
-- Template rendering
-- Configuration
-- Logging
-- Profiling
-
-Enable in development config:
-```python
-DEBUG_TB_ENABLED = True
-DEBUG_TB_PROFILER_ENABLED = True
-```
-
-### Logging
-- Structured JSON logging
-- Log rotation
-- Different levels per environment
-- Request tracking
-- Performance monitoring
-
-### Debug Views
-Available at `/debug` in development:
-- `/debug/info`: Application state
-- `/debug/config`: Current configuration
-- `/debug/routes`: Registered routes
-
-## Profiling Tools
-
-### Request Profiling
-- Execution time tracking
-- Memory usage monitoring
-- SQL query analysis
-- Function call profiling
-
-### Memory Profiling
-- Memory usage tracking
-- Memory leak detection
-- Object allocation tracking
-
-### Performance Profiling
-- Function timing
-- Call stack analysis
-- Bottleneck identification
-
-## Mock Data Generation
-
-### Available Generators
-- Users with profiles
-- Posts with content
-- Comments and interactions
-- Relationships and connections
-
-### Customization
-```python
-from utils.dev.testing import MockDataGenerator
-
-# Custom user data
-user = MockDataGenerator.user(
-    username="custom_user",
-    email="custom@example.com"
-)
-
-# Custom post data
-post = MockDataGenerator.post(
-    user_id=1,
-    content="Custom content"
-)
-```
+---
 
 ## Deployment
+- Docker and Docker Compose supported out of the box
+- Nginx config provided for static/frontend serving
+- Environment variables control production settings
+- See `docker-compose.yml` and `nginx.conf` for examples
 
-### Docker
-```bash
-# Build and run with Docker
-docker build -t flask-app .
-docker run -p 5000:5000 flask-app
-
-# Or use docker-compose
-docker-compose up
-```
-
-### Production Setup
-1. Set environment variables
-2. Configure Nginx (see `nginx.conf`)
-3. Set up Supervisor (see `supervisor.conf`)
-4. Initialize database
-5. Configure Redis
-6. Set up SSL certificates
+---
 
 ## Contributing
+1. Fork the repo and create a feature branch
+2. Write clear, well-documented code
+3. Add/maintain tests
+4. Open a pull request with a detailed description
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and quality checks
-5. Submit a pull request
+---
 
-### Development Workflow
-1. Activate virtual environment
-2. Install development dependencies
-3. Set up pre-commit hooks
-4. Make changes
-5. Run tests and checks
-6. Commit changes
+## Troubleshooting & FAQ
+- **Database issues:** Ensure `faces.db` is present and migrations are up to date
+- **CORS errors:** Check backend CORS config and frontend API base URL
+- **Static files not loading:** Ensure Nginx/static config is correct
+- **Login/auth issues:** Check session/cookie settings and browser console
+- **For more help:** See `debug_output.txt` or open an issue
+
+---
+
+## Credits
+**Developed by ReaL KeeD**
+
+Special thanks to all contributors, testers, and the open-source community.
+
+---
 
 ## License
+This project is licensed under the MIT License. See `LICENSE` for details.
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+## Image URL Normalization Flow
+
+To ensure all face images display correctly across the app (feed, search, etc.), DoppleGänger uses a shared normalization utility:
+
+- **Backend:**
+  - All face image URLs are generated using `normalize_extracted_face_path(filename)` from `utils/image_paths.py`.
+  - This ensures images are always returned as `/static/extracted_faces/<filename>` (or a valid static path), regardless of their original location or how they're stored in the database.
+  - This normalization is applied in:
+    - The social feed API (for posts/matches)
+    - The search API (for search results)
+
+**Flow Diagram:**
+
+```mermaid
+flowchart TD
+    A[Face filename in DB] --> B[normalize_extracted_face_path]
+    B --> C[/static/extracted_faces/filename]
+    C --> D[Returned in API JSON]
+    D --> E[Frontend displays image]
+```
+
+- This approach prevents broken images and ensures consistency between the feed, search, and all other parts of the app.
+
+---
+
+## Technical Documentation
+
+### Application Architecture
+
+#### Backend (Flask)
+
+##### Blueprints & Routes
+
+1. **Main Blueprint** (`routes/main.py`)
+   - `/` - Home page
+   - `/about` - About page
+   - `/contact` - Contact page
+
+2. **Auth Blueprint** (`routes/auth.py`)
+   - `/auth/register` - User registration
+   - `/auth/login` - User login
+   - `/auth/logout` - User logout
+   - `/auth/reset-password` - Password reset
+   - `/api/csrf-token` - CSRF token generation
+
+3. **API Blueprint** (`routes/api.py`)
+   - `/api/current_user` - Get current user data
+   - `/api/profile/data` - Get profile data
+   - `/api/stats/followers` - Get follower count
+   - `/api/stats/following` - Get following count
+   - `/api/search` - Search functionality
+   - `/api/social/feed/` - Social feed
+   - `/api/social/feed/create_post` - Create post
+   - `/api/social/feed/like_post/<post_id>` - Like/unlike post
+   - `/api/social/notifications/unread_count` - Get unread notifications
+
+4. **Mobile API Blueprint** (`routes/mobile_api.py`)
+   - `/mobile_api/auth/login` - Mobile login
+   - `/mobile_api/auth/register` - Mobile registration
+   - `/mobile_api/ping` - API health check
+
+5. **Profile Blueprint** (`routes/profile/`)
+   - `/profile/view` - View profile
+   - `/profile/edit` - Edit profile
+   - `/profile/update` - Update profile
+   - `/profile/api/user` - Profile API
+
+6. **Face Blueprint** (`routes/face.py`)
+   - `/face/upload` - Face upload
+   - `/face/match` - Face matching
+   - `/face/search` - Face search
+
+7. **Social Blueprint** (`routes/social.py`)
+   - `/social/feed` - Social feed
+   - `/social/post` - Post management
+   - `/social/comment` - Comment management
+   - `/social/like` - Like management
+
+8. **Search Blueprint** (`routes/search.py`)
+   - `/search` - Search interface
+   - `/search/api` - Search API
+
+9. **Admin Blueprint** (`routes/admin.py`)
+   - `/admin/dashboard` - Admin dashboard
+   - `/admin/users` - User management
+   - `/admin/moderate` - Content moderation
+
+##### Database Models
+
+1. **User Model** (`models/user.py`)
+   ```python
+   class User(UserMixin, db.Model):
+       id = db.Column(db.Integer, primary_key=True)
+       username = db.Column(db.String(80), unique=True)
+       email = db.Column(db.String(120), unique=True)
+       password_hash = db.Column(db.String(128))
+       # ... other fields
+   ```
+
+2. **Face Model** (`models/face.py`)
+   ```python
+   class Face:
+       id = db.Column(db.Integer, primary_key=True)
+       filename = db.Column(db.String(200))
+       encoding = db.Column(db.BLOB)
+       # ... other fields
+   ```
+
+3. **Social Models** (`models/social/`)
+   - `Post` - Social posts
+   - `Comment` - Post comments
+   - `Like` - Post likes
+   - `Notification` - User notifications
+   - `ClaimedProfile` - Claimed face profiles
+
+4. **UserMatch Model** (`models/user_match.py`)
+   ```python
+   class UserMatch:
+       id = db.Column(db.Integer, primary_key=True)
+       user_id = db.Column(db.Integer)
+       match_filename = db.Column(db.String(200))
+       # ... other fields
+   ```
+
+#### Frontend (React + Vite)
+
+##### Components Structure
+
+1. **Core Components** (`frontend/src/components/`)
+   - `Navbar.jsx` - Navigation bar
+   - `Footer.jsx` - Footer
+   - `Button.jsx` - Reusable button
+   - `Input.jsx` - Form input
+   - `Modal.jsx` - Modal dialog
+   - `Loading.jsx` - Loading spinner
+   - `ErrorBoundary.jsx` - Error handling
+
+2. **Page Components** (`frontend/src/pages/`)
+   - `WelcomePage.jsx` - Landing page
+   - `LoginPage.jsx` - Login form
+   - `RegisterPage.jsx` - Registration form
+   - `ProfilePage.jsx` - User profile
+   - `EditProfilePage.jsx` - Profile editing
+   - `FeedPage.jsx` - Social feed
+   - `SearchPage.jsx` - Search interface
+   - `NotificationsPage.jsx` - Notifications
+   - `ComparisonPage.jsx` - Face comparison
+
+3. **Feature Components** (`frontend/src/features/`)
+   - `FaceUpload.jsx` - Face upload
+   - `FaceMatch.jsx` - Face matching
+   - `Post.jsx` - Post display
+   - `Comment.jsx` - Comment system
+   - `Like.jsx` - Like functionality
+   - `Search.jsx` - Search functionality
+
+4. **Layout Components** (`frontend/src/layouts/`)
+   - `MainLayout.jsx` - Main layout
+   - `AuthLayout.jsx` - Auth pages layout
+   - `ProfileLayout.jsx` - Profile pages layout
+
+##### State Management
+
+1. **Context Providers**
+   - `AuthContext` - Authentication state
+   - `UserContext` - User data
+   - `NotificationContext` - Notifications
+   - `ThemeContext` - UI theme
+
+2. **Custom Hooks**
+   - `useAuth` - Authentication hooks
+   - `useProfile` - Profile management
+   - `useFeed` - Feed management
+   - `useSearch` - Search functionality
+
+##### API Integration
+
+1. **API Services** (`frontend/src/services/`)
+   - `auth.js` - Authentication API
+   - `user.js` - User API
+   - `face.js` - Face matching API
+   - `social.js` - Social features API
+   - `search.js` - Search API
+
+2. **API Utilities**
+   - `api.js` - Base API configuration
+   - `interceptors.js` - Request/response interceptors
+   - `error-handling.js` - Error handling
+
+### Data Flow
+
+1. **Authentication Flow**
+   ```mermaid
+   sequenceDiagram
+       User->>Frontend: Enter credentials
+       Frontend->>Backend: POST /auth/login
+       Backend->>Database: Verify credentials
+       Backend->>Frontend: JWT token
+       Frontend->>LocalStorage: Store token
+   ```
+
+2. **Face Matching Flow**
+   ```mermaid
+   sequenceDiagram
+       User->>Frontend: Upload photo
+       Frontend->>Backend: POST /face/upload
+       Backend->>FaceModel: Process face
+       Backend->>Database: Store encoding
+       Backend->>Frontend: Match results
+   ```
+
+3. **Social Feed Flow**
+   ```mermaid
+   sequenceDiagram
+       User->>Frontend: Load feed
+       Frontend->>Backend: GET /api/social/feed
+       Backend->>Database: Fetch posts
+       Backend->>Frontend: Post data
+       Frontend->>User: Display feed
+   ```
+
+### Security Features
+
+1. **Authentication**
+   - JWT-based authentication
+   - CSRF protection
+   - Password hashing
+   - Session management
+
+2. **Authorization**
+   - Role-based access control
+   - Route protection
+   - API endpoint security
+
+3. **Data Protection**
+   - Input sanitization
+   - SQL injection prevention
+   - XSS protection
+   - File upload security
+
+### Performance Optimizations
+
+1. **Backend**
+   - Database indexing
+   - Query optimization
+   - Caching (Redis)
+   - Rate limiting
+
+2. **Frontend**
+   - Code splitting
+   - Lazy loading
+   - Image optimization
+   - Caching strategies
+
+### Error Handling
+
+1. **Backend**
+   - Global error handlers
+   - Custom error responses
+   - Logging system
+   - Database error handling
+
+2. **Frontend**
+   - Error boundaries
+   - Toast notifications
+   - Form validation
+   - API error handling
+
+### Testing Strategy
+
+1. **Backend Tests**
+   - Unit tests (pytest)
+   - Integration tests
+   - API tests
+   - Database tests
+
+2. **Frontend Tests**
+   - Component tests (Jest)
+   - Integration tests
+   - E2E tests (Cypress)
+   - API mocking
+
+### Deployment
+
+1. **Development**
+   - Local development setup
+   - Hot reloading
+   - Debug tools
+   - Development database
+
+2. **Production**
+   - Docker containers
+   - Nginx reverse proxy
+   - SSL/TLS
+   - Database backups
+
+### Monitoring & Maintenance
+
+1. **Logging**
+   - Application logs
+   - Error logs
+   - Access logs
+   - Performance metrics
+
+2. **Monitoring**
+   - Health checks
+   - Performance monitoring
+   - Error tracking
+   - User analytics
+
+This documentation provides a comprehensive overview of the DoppleGänger application's architecture, components, and functionality. For more detailed information about specific components or features, please refer to the respective module's documentation or source code.
+
+---
+

@@ -1,28 +1,33 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import LazyImage from '../../components/LazyImage';
+import styles from './matchpostavatar.module.css';
 
-const styles = {
-  ImageContainer: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '9999px',
-    border: '2px solid #030303',
-    backgroundPosition: 'center center',
-    backgroundSize: 'cover',
-    backgroundRepeat: 'no-repeat',
-  },
-};
+const MatchPostAvatarContent = ({ src, alt, onError }) => {
+  const handleError = useCallback((error) => {
+    console.error('Error in MatchPostAvatar:', error);
+    if (onError) {
+      onError(error);
+    }
+  }, [onError]);
 
-const defaultProps = {
-  image: '/static/images/default_profile.png',
-}
-
-const Image = (props) => {
   return (
-    <div style={{
-      ...styles.ImageContainer,
-      backgroundImage: `url(${props.image ?? defaultProps.image})`,
-    }} />
+    <div className={styles.avatarContainer}>
+      <LazyImage
+        src={src}
+        alt={alt}
+        className={styles.avatar}
+        onError={handleError}
+      />
+    </div>
   );
 };
 
-export default Image;
+// Wrap the component with ErrorBoundary
+const MatchPostAvatar = (props) => (
+  <ErrorBoundary>
+    <MatchPostAvatarContent {...props} />
+  </ErrorBoundary>
+);
+
+export default MatchPostAvatar;

@@ -3,7 +3,8 @@ import os
 from flask import current_app, url_for
 
 from models.face import Face
-from models.sqlalchemy_models import User, db
+from models.user import User
+from extensions import db
 from models.user_match import UserMatch
 from utils.face.recognition import extract_face_encoding
 from utils.image_paths import normalize_profile_image_path
@@ -121,8 +122,6 @@ def get_enriched_faiss_matches(
 
     for match_data in raw_matches:
         # Validate image path for the matched face
-        # Assuming match_data['filename'] is just the filename, e.g., 'face_123.jpg'
-        # Path relative to static folder: 'extracted_faces/face_123.jpg' or 'faces/userprofile_xyz.jpg'
         filename = match_data.get("filename", "")
         if not filename:
             current_app.logger.debug("[FAISS_HELPER] Match data has no filename, skipping.")
@@ -130,12 +129,10 @@ def get_enriched_faiss_matches(
 
         # Try multiple possible locations for the image
         image_exists = False
-        full_image_fs_path = None
         web_image_path = None
         
         # 1. Check extracted_faces folder first (for non-user profile images)
         if not filename.startswith("userprofile_"):
-            # Standard extracted faces directory
             potential_image_static_path = os.path.join("extracted_faces", filename)
             potential_image_static_path = potential_image_static_path.replace("\\", "/")
             full_image_fs_path = os.path.join(current_app.static_folder, potential_image_static_path)
@@ -167,24 +164,14 @@ def get_enriched_faiss_matches(
                 web_image_path = f"/static/{potential_image_static_path}"
                 current_app.logger.debug(f"[FAISS_HELPER] Found image in faces: {web_image_path}")
 
-        # 4. Final attempt with direct match in static folder (no subdirectory)
-        if not image_exists:
-            potential_image_static_path = filename
-            full_image_fs_path = os.path.join(current_app.static_folder, potential_image_static_path)
-            
-            if os.path.exists(full_image_fs_path):
-                image_exists = True
-                web_image_path = f"/static/{potential_image_static_path}"
-                current_app.logger.debug(f"[FAISS_HELPER] Found image directly in static: {web_image_path}")
-
         if not image_exists:
             current_app.logger.warning(
                 f"[FAISS_HELPER] Matched image file not found, skipping: {filename}"
             )
+            continue
         else:
             valid_image_found_count += 1
 
-        # Even if Face object doesn't exist in DB, we can still create a result using the file info we have
         # Initialize a basic face_dict with information we already have from the match
         face_dict = {
             "id": match_data.get("id", 0),
@@ -193,14 +180,9 @@ def get_enriched_faiss_matches(
             "distance": match_data.get("distance"),
             "like_count": 0,
             "user_has_liked": False,
+            "image": web_image_path,  # Add the image path directly
+            "safe_image_path": web_image_path,  # Keep this for backward compatibility
         }
-        
-        # Use the web_image_path we found earlier for the image URL
-        if image_exists and web_image_path:
-            face_dict["safe_image_path"] = web_image_path
-        else:
-            # Fallback URL as a last resort
-            face_dict["safe_image_path"] = url_for("static", filename="faces/face_page1_id0.jpg")
         
         # Try to get additional metadata from the Face object if it exists
         face_obj = Face.get_by_filename(filename)
@@ -208,8 +190,34 @@ def get_enriched_faiss_matches(
             # Update with Face object data but don't overwrite what we already set
             face_obj_dict = face_obj.to_dict(include_private=True)
             for key, value in face_obj_dict.items():
-                if key not in ["similarity", "distance", "safe_image_path"] and value is not None:
+                if key not in ["similarity", "distance", "safe_image_path", "image"] and value is not None:
                     face_dict[key] = value
+                    
+            # Explicitly ensure state and decade info is included
+            if not face_dict.get('decade') and hasattr(face_obj, 'metadata') and face_obj.metadata:
+                if isinstance(face_obj.metadata, dict) and 'decade' in face_obj.metadata:
+                    face_dict['decade'] = face_obj.metadata.get('decade')
+                elif isinstance(face_obj.metadata, str):
+                    try:
+                        import json
+                        metadata_dict = json.loads(face_obj.metadata)
+                        if 'decade' in metadata_dict:
+                            face_dict['decade'] = metadata_dict.get('decade')
+                    except:
+                        current_app.logger.warning(f"[SEARCH_HELPER] Could not parse metadata for {filename}")
+            
+            # Same for state info
+            if not face_dict.get('state') and hasattr(face_obj, 'metadata') and face_obj.metadata:
+                if isinstance(face_obj.metadata, dict) and 'state' in face_obj.metadata:
+                    face_dict['state'] = face_obj.metadata.get('state')
+                elif isinstance(face_obj.metadata, str):
+                    try:
+                        import json
+                        metadata_dict = json.loads(face_obj.metadata)
+                        if 'state' in metadata_dict:
+                            face_dict['state'] = metadata_dict.get('state')
+                    except:
+                        current_app.logger.warning(f"[SEARCH_HELPER] Could not parse metadata for {filename}")
             
             face_id = getattr(face_obj, "id", None)
             if face_id:
@@ -236,7 +244,7 @@ def get_enriched_faiss_matches(
             if face_id_for_comparison:
                 try:
                     face_dict["comparison_url"] = url_for(
-                        "face_bp.direct_face_view", face_id=face_id_for_comparison
+                        "face.direct_face_view", face_id=face_id_for_comparison
                     )
                 except Exception as e:
                     current_app.logger.error(f"Error generating comparison_url for face_id {face_id_for_comparison}: {e}")
@@ -256,22 +264,12 @@ def get_enriched_faiss_matches(
             if "face_id" not in face_dict:
                 face_dict["face_id"] = match_data.get("id", 0)  # Use this as a fallback ID
 
-            # Ensure we have a default avatar path for missing images
-            default_avatar_path = url_for('static', filename='assets/img/default-avatar.png')
-            if not image_exists or not web_image_path:
-                face_dict["safe_image_path"] = default_avatar_path
-                face_dict["thumbnail_url"] = default_avatar_path
-            else:
-                face_dict["thumbnail_url"] = face_dict.get("safe_image_path", default_avatar_path)
-
         if face_dict.get("similarity") is None:
             face_dict["similarity"] = 0.0
 
         enriched_matches.append(face_dict)
 
     if not enriched_matches and valid_image_found_count > 0:
-        # This case means images existed, Face objects existed, but something else failed in enrichment or all were filtered out before enrichment step
-        # (though current loop structure makes this less likely unless Face.get_by_filename fails often)
         return [], "Found potential matches, but could not retrieve full details."
     elif not enriched_matches:
         return [], "No visually similar faces found with valid details."

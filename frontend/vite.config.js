@@ -5,38 +5,37 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // Accept external connections (needed for ngrok/tunnels)
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '7964-149-36-48-146.ngrok-free.app' // Added your ngrok domain here
+    ],
     proxy: {
-      // Proxy API requests to Flask backend
-      // General rule for all /api calls
       '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true, // Recommended for virtual hosted sites
+        target: 'http://localhost:5001',
+        changeOrigin: true,
       },
-      // Proxy for all /auth calls
       '/auth': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
-      // Profile routes
       '/profile': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
-      // Social routes
       '/social': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
-      // Proxy requests for static assets (like images) to Flask
       '/static': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
-      // Proxy requests for face images served by /face/... routes
       '/face': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5001',
         changeOrigin: true,
       },
-    }
-  }
+    },
+  },
 })

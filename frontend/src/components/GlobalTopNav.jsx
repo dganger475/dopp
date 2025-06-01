@@ -1,19 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faSearch, faUser, faBell } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faSearch, faUser, faBell, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import API_BASE_URL from '../config/api';
 
 const MOBILE_BREAKPOINT = 768; 
 const logoUrl = "/static/images/logo.png"; // Path to logo in static/images directory
 
 const GlobalTopNav = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        // Redirect to login page after successful logout
+        navigate('/login');
+      } else {
+        console.error('Logout failed');
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
 
   const iconStyle = {
     color: '#000000', // Black color for icons
@@ -71,6 +91,19 @@ const GlobalTopNav = () => {
         <Link to="/profile/" title="Profile" style={navLinkStyle}>
           <FontAwesomeIcon icon={faUser} style={iconStyle} />
         </Link>
+        <button 
+          onClick={handleLogout} 
+          title="Logout" 
+          style={{
+            ...navLinkStyle,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0
+          }}
+        >
+          <FontAwesomeIcon icon={faSignOutAlt} style={iconStyle} />
+        </button>
       </div>
     </nav>
   );

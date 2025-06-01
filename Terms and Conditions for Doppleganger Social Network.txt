@@ -1,0 +1,82 @@
+🧾 Terms and Conditions for Doppleganger Social Network
+Effective Date: May 30, 2025
+Developer: Jacob Layton
+Contact: dganger475@gmail.com
+Address: 2135 NW 13th St Unit 35, Gresham, OR 97030
+
+Welcome to the Doppleganger Social Network (“App”, “we”, “our”, or “us”). By accessing or using this App, you agree to the following legally binding terms. If you do not agree, you must not use the App.
+
+1. Purpose of the App
+Doppleganger Social Network allows users to upload face images and discover similar-looking faces from a large visual database. It is intended solely for entertainment and exploration of facial resemblance — not for identity confirmation or verification.
+
+2. Data Sources and Anonymity
+The App uses face images sourced from publicly available yearbooks located in digital archives.
+To protect individual privacy:
+
+All school names, years, locations, and identifying metadata have been removed
+
+Faces in the database are not labeled, tagged, or named
+
+Any recognition is based purely on visual similarity
+
+Note: Matches are not identity confirmations, and should not be treated as factual assertions about any person.
+
+3. User-Provided Content
+When you register an account or upload an image, you agree:
+
+Your face image will be processed and added to the App’s searchable database, so others may match with it.
+
+Your name and optional demographic info (e.g., age, state, decade, gender) may be collected and used for internal display or filtering.
+
+You affirm that you own or have the right to use any image you upload.
+
+4. Identification Policy
+Only registered users may recognize themselves in the App
+
+The App does not identify, label, or name anyone in its search results
+
+Matches are based on algorithmic similarity only and do not imply factual identity
+
+5. Prohibited Uses
+You agree not to:
+
+Attempt to de-anonymize, label, or expose individuals from search results
+
+Upload unlawful, explicit, or harmful content
+
+Use the App to harass, impersonate, or mislead others
+
+Misuse match results to make identity claims about any person
+
+Violations of these rules may result in account suspension, permanent ban, and/or legal action.
+
+6. Takedown Requests
+If you see your image in the App and want it removed:
+
+📧 Email: dganger475@gmail.com
+Please include a screenshot or descriptive reference.
+We will investigate and remove the image and associated data within 72 hours of a valid request.
+
+7. Ownership and Rights
+All original software, design, and content associated with the App are the intellectual property of Jacob Layton.
+You may not reproduce, republish, or redistribute any part of the App without written permission.
+
+8. Disclaimer and Limitation of Liability
+The App is provided “as is” for entertainment purposes only
+
+We do not guarantee the accuracy or authenticity of face match results
+
+We are not liable for:
+
+The behavior or misuse by users
+
+Any harm arising from incorrect matches
+
+Unauthorized access or third-party use of uploaded content
+
+9. Governing Law
+These Terms are governed by the laws of the State of Oregon, United States.
+Any legal disputes must be resolved under Oregon jurisdiction.
+
+© 2025 Doppleganger Social Network. All rights reserved.
+

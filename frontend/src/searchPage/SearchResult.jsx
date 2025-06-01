@@ -1,70 +1,102 @@
 // MatchCard.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import styles from './SearchResult.module.css';
 
 // --- The unified MatchCard component ---
-const MatchCard = ({
-  image,
-  label, // "REGISTERED USER" or "UNCLAIMED PROFILE"
-  username, // actual username if registered
-  similarity, // "Similarity: XX%"
-  stateDecade, // combined string for state/decade/location
-}) => {
-  const isRegistered = label === "REGISTERED USER";
-  const defaultImage = 'https://via.placeholder.com/120?text=Match';
-  const finalImage = image || defaultImage;
+const SearchResult = ({ result, index, hideSimilarity = false }) => {
+  const navigate = useNavigate();
 
-  const displayUsername = isRegistered && username ? `@${username}` : "@UNCLAIMED";
+  // Extract data from the unified card structure
+  const {
+    id,
+    image,
+    username,
+    label,
+    similarity,
+    stateDecade,
+    is_registered
+  } = result;
+
+  const handleCardClick = () => {
+    // Only navigate for non-registered users
+    if (!is_registered) {
+      // Navigate to comparison page with match data
+      navigate(`/comparison/${id || index}`, {
+        state: {
+          matchData: result,
+          // We'll get user data from the API in the comparison page
+        }
+      });
+    }
+  };
+  
+  // Card styling based on user type
+  const cardBgColor = is_registered ? '#ffffff' : 'rgb(0, 123, 255)'; // White for registered, blue for unclaimed
+  const borderColor = is_registered ? '#e0e0e0' : '#000000'; // Light grey border for registered, black for unclaimed
+  const labelBgColor = is_registered ? '#e0e0e0' : '#000000'; // Light grey label for registered, black for unclaimed
+  const labelTextColor = is_registered ? '#000000' : 'rgb(255, 255, 255)'; // Black text for registered, white for unclaimed
+  
+  // Fallback for image
+  const displayImage = image || '/static/images/default_profile.svg';
+
+  // Fallback for similarity
+  let displaySimilarity = '';
+  let percent = null;
+  if (similarity !== undefined && similarity !== null && similarity !== '') {
+    const num = parseFloat(String(similarity).replace('%', ''));
+    if (!isNaN(num)) {
+      percent = num <= 1 ? Math.round(num * 100) : Math.round(num);
+      displaySimilarity = `${percent}%`;
+    } else {
+      displaySimilarity = '--%';
+    }
+  } else {
+    displaySimilarity = '--%';
+  }
 
   return (
     <div 
-      className={`dopple-card ${isRegistered ? 'dopple-blue-border' : 'dopple-black-border'}`}
-      style={{ width: '100%', maxWidth: '320px', textAlign: 'center' }} // Centering content within the card
+      className={styles.card} 
+      onClick={handleCardClick}
+      style={{
+        backgroundColor: cardBgColor,
+        borderColor: borderColor,
+        cursor: is_registered ? 'default' : 'pointer'
+      }}
     >
-      <div
-        style={{
-          backgroundColor: isRegistered ? 'var(--dopple-blue)' : '#FF8C00', // DarkOrange for unclaimed
-          color: 'var(--dopple-white)',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          fontWeight: 'bold',
-          fontSize: '12px',
-          marginBottom: '12px',
-          display: 'inline-block',
-        }}
-      >
-        {label}
+      <div className={styles.imageContainer}>
+        <img 
+          src={displayImage} 
+          alt={username} 
+          className={styles.image}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = '/static/images/default_profile.svg';
+          }}
+        />
       </div>
-      <img
-        src={finalImage}
-        alt="Match face"
-        className="dopple-match-img dopple-mx-auto" // main.css class for image, mx-auto for centering if block
-        style={{ width: '120px', height: '120px', marginBottom: '12px', borderRadius: '18px' }} // Ensure class styles apply
-      />
-      <div
-        style={{
-          background: isRegistered ? 'var(--dopple-blue)' : 'var(--dopple-black)',
-          color: 'var(--dopple-white)',
-          padding: '6px 14px',
-          borderRadius: 'var(--dopple-border-radius, 16px)',
-          fontWeight: '600',
-          fontSize: '15px',
-          marginBottom: '10px',
-          display: 'inline-block',
-          lineHeight: 'normal'
-        }}
-      >
-        {displayUsername}
-      </div>
-      <div style={{ fontSize: '14px', color: 'var(--dopple-black)', marginBottom: '6px', fontWeight: '500' }}>
-        {similarity}
-      </div>
-      {stateDecade && (
-        <div style={{ fontSize: '13px', color: '#4A4A4A' }}>
-          {stateDecade}
+      <div className={styles.details}>
+        <div 
+          className={styles.label}
+          style={{
+            backgroundColor: labelBgColor,
+            color: labelTextColor
+          }}
+        >
+          {label}
         </div>
-      )}
+        <div className={styles.username}>{username}</div>
+        {/* Similarity only if not hidden */}
+        {!hideSimilarity && displaySimilarity && (
+          <div className={styles.similarity}>{displaySimilarity}</div>
+        )}
+        {stateDecade && (
+          <div className={styles.location}>{stateDecade}</div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default MatchCard;
+export default SearchResult;

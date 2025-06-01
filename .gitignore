@@ -39,25 +39,62 @@ wheels/
 
 # Virtual Environment
 venv/
-env/
 ENV/
+env/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+.vs/
+
+# Flask
+instance/
+.webassets-cache
+flask_session/
 
 # Logs
-logs/
 *.log
+logs/
+.coverage
+htmlcov/
 
-# Local development
+# Environment variables
 .env
-.env.local
-instance/
+.env.*
+!.env.example
+
+# Build files
+frontend/dist/
+frontend/build/
+frontend/node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Project specific
+extracted_faces/
+b2_supabase_faiss_mapping.csv*
+backup_codes.txt
+debug_output.txt
+test_cors_result.txt
+missing_db_images.txt
+*.dll
+*.def
+ngrok.*
 
 # Static files
+static/
 static/uploads/*
 static/extracted_faces/*
 static/profile_pics/*
@@ -76,7 +113,6 @@ static/faces/*
 /data/index/faces.index
 /data/index/faces_filenames.pkl
 
-# Node modules and build artifacts
-frontend/node_modules/
-frontend/dist/
-frontend/build/
+# Git configuration
+git config --global core.autocrlf true
+

@@ -12,8 +12,8 @@ from extensions import db
 from .user import User
 from .face import Face
 from .follow import Follow
-from .notification import Notification
-from .reaction import Reaction
+# from .notification import Notification  # Removed, handled in social/notification.py
+# from .reaction import Reaction  # Removed, handled in social/interaction.py
 from .social import Post, Comment, Like, ClaimedProfile
 from .user_match import UserMatch
 
@@ -23,8 +23,8 @@ __all__ = [
     'User',
     'Face',
     'Follow',
-    'Notification',
-    'Reaction',
+    # 'Notification',
+    # 'Reaction',
     'Post',
     'Comment',
     'Like',

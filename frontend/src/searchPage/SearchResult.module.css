@@ -1,0 +1,125 @@
+.card {
+  width: 160px;
+  height: 280px;
+  border-radius: 12px;
+  border: 2px solid;
+  padding: 16px;
+  margin: 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.imageContainer {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 8px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+.details {
+  text-align: center;
+  width: 100%;
+}
+
+.label {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  background: rgb(51, 51, 51);
+  color: rgb(255, 255, 255);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 8px;
+}
+
+.username {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: inherit;
+  background: rgb(51, 51, 51);
+  color: rgb(255, 255, 255);
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 8px;
+  width: auto;
+  min-width: 100px;
+  max-width: 140px;
+}
+
+.similarity {
+  font-size: 12px;
+  color: #4A4A4A;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  min-width: 35px;
+  text-align: center;
+}
+
+.location {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.comparisonSmall {
+  max-width: 90px !important;
+  min-width: 70px !important;
+  width: 90px !important;
+  padding: 4px !important;
+  margin: 2px !important;
+}
+.comparisonSmall .imageContainer {
+  width: 40px !important;
+  height: 40px !important;
+  margin-bottom: 4px !important;
+  border-radius: 8px !important;
+}
+.comparisonSmall .image {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px !important;
+}
+.comparisonSmall .details {
+  text-align: center;
+}
+.comparisonSmall .label {
+  font-size: 8px !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  margin-bottom: 2px !important;
+}
+.comparisonSmall .username {
+  font-size: 10px !important;
+  margin-bottom: 2px !important;
+}
+.comparisonSmall .similarity {
+  font-size: 8px !important;
+  margin-bottom: 2px !important;
+}
+.comparisonSmall .location {
+  font-size: 8px !important;
+  color: #888 !important;
+} 

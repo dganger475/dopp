@@ -1,0 +1,81 @@
+/* ProfilePageOverrides.css */
+/* This file contains overrides for the ProfilePage styling */
+
+/* Global font family */
+.profileContainer * {
+  font-family: Arial, sans-serif !important;
+}
+
+/* Username pill styling */
+.usernamePill {
+  background-color: #0066cc !important; /* Darker blue */
+  color: white !important;
+  padding: 8px 30px !important; /* Larger padding */
+  border-radius: 30px !important; /* Larger border radius */
+  display: inline-block !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important; /* Larger shadow */
+  white-space: nowrap !important;
+  font-weight: 600 !important;
+  font-size: 1.5em !important; /* Larger font size */
+  letter-spacing: 0.8px !important; /* More letter spacing */
+  transform: scale(1.2) !important; /* Scale the entire element up */
+  transform-origin: center top !important; /* Scale from the top center */
+}
+
+/* Member since side styling */
+.memberSinceSide {
+  position: absolute !important;
+  left: 20px !important;
+  top: 10px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  padding: 4px 10px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  text-align: center !important;
+  line-height: 1.1 !important;
+}
+
+/* Location container styling */
+.locationContainer {
+  position: absolute !important;
+  right: 20px !important;
+  top: 10px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  padding: 4px 10px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  text-align: center !important;
+  line-height: 1.1 !important;
+  font-size: 0.75rem !important;
+  color: #444 !important;
+  font-weight: bold !important;
+  white-space: nowrap !important;
+}
+
+/* Bio section styling */
+.bioSection {
+  margin: -10px auto 20px !important; /* Negative margin to move it up */
+  padding: 0 20px !important;
+  max-width: 600px !important;
+  text-align: center !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+/* Bio text styling */
+.bioText {
+  color: white !important;
+  line-height: 1.6 !important;
+  font-size: 1.1rem !important;
+  margin-top: 10px !important;
+}
+
+/* Remove the bio label */
+.bioLabel {
+  display: none !important;
+}
+
+/* Hide the hometown field */
+.locationLabel:contains("Hometown") {
+  display: none !important;
+}

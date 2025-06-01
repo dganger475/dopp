@@ -15,7 +15,7 @@ import numpy as np  # Explicit import for numpy
 from models.face import Face
 from models.social import ClaimedProfile  # Import ClaimedProfile
 from utils.face.recognition import rebuild_faiss_index
-from utils.db.database import get_users_db_connection # Added import
+from utils.db.database import get_db_connection # Added import
 
 
 def index_profile_face(filename, user_id, username):
@@ -24,7 +24,6 @@ def index_profile_face(filename, user_id, username):
     create a ClaimedProfile record, and update FAISS index.
     Returns the face crop filename or None.
     """
-    conn = None  # Initialize conn to None
     try:
         folder = "static/profile_pics"
         extension = os.path.splitext(filename)[1]
@@ -60,8 +59,8 @@ def index_profile_face(filename, user_id, username):
         Image.fromarray(face_crop_array).save(faces_save_path)
         current_app.logger.info(f"Saved cropped profile face to: {faces_save_path}")
 
-        # Add to Face DB - Face.create now returns (face_obj, connection_obj)
-        face, conn = Face.create( # Unpack the tuple
+        # Add to Face DB
+        face = Face.create(
             filename=faces_filename,
             image_path=faces_save_path,
             school_name=None,  # Corrected: Not a yearbook entry
@@ -87,13 +86,12 @@ def index_profile_face(filename, user_id, username):
                 # Continue, as the main face record and ClaimedProfile will still be created
 
             # Claim the profile face for the user
-            # TODO: Consider if relationship should be 'Self' or similar if that's a defined enum/type elsewhere.
             claimed_profile = ClaimedProfile.create(
                 user_id=user_id,
+                face_id=face.id,
                 face_filename=faces_filename,
                 relationship="Profile Image",  # Specific relationship for profile images
                 caption=f"{username}'s profile picture",  # Optional: a default caption
-                share_to_feed=False,  # Do not automatically create a feed post
             )
 
             if claimed_profile:
@@ -106,7 +104,7 @@ def index_profile_face(filename, user_id, username):
                 )
                 # Continue, as the face itself was indexed. The claim can be fixed/retried later if necessary.
 
-            # Pass the connection from Face.create to rebuild_faiss_index
+            # Rebuild FAISS index
             rebuild_faiss_index(app=current_app)
             return faces_filename
         else:
@@ -129,11 +127,7 @@ def index_profile_face(filename, user_id, username):
     except Exception as e:
         # Use traceback for more detailed error logging
         import traceback
-
         current_app.logger.error(
             f"Error indexing profile face for user_id {user_id}, filename {filename}: {e}\n{traceback.format_exc()}"
         )
         return None
-    finally:
-        if conn: # Ensure connection is closed if it was opened
-            conn.close()

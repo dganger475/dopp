@@ -46,46 +46,35 @@ class Face:
     @classmethod
     def get_by_id(cls, face_id):
         """Get a face by its ID."""
-        conn = get_db_connection()
-        if not conn:
-            return None
-
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM faces WHERE id = ?", (face_id,))
-            face_data = cursor.fetchone()
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM faces WHERE id = ?", (face_id,))
+                face_data = cursor.fetchone()
 
-            if face_data:
-                return cls(**dict(face_data))
-            return None
-
+                if face_data:
+                    return cls(**dict(face_data))
+                return None
         except Exception as e:
             logging.error(f"Error fetching face by id: {e}")
             return None
-        finally:
-            conn.close()
 
     @classmethod
     def get_by_filename(cls, filename):
         """Get a face by its filename."""
-        conn = get_db_connection()
-        if not conn:
-            return None
-
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM faces WHERE filename = ?", (filename,))
-            face_data = cursor.fetchone()
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM faces WHERE filename = ?", (filename,))
+                face_data = cursor.fetchone()
 
-            if face_data:
-                return cls(**dict(face_data))
-            return None
+                if face_data:
+                    return cls(**dict(face_data))
+                return None
 
         except Exception as e:
             logging.error(f"Error fetching face by filename: {e}")
             return None
-        finally:
-            conn.close()
 
     @classmethod
     def get_unique_locations(cls):
@@ -148,92 +137,58 @@ class Face:
     @classmethod
     def get_unique_decades(cls):
         """Get a list of unique decades from face data."""
-        # Standard decades to always return, properly formatted
         standard_decades = [
-            "1940s",
-            "1950s",
-            "1960s",
-            "1970s",
-            "1980s",
-            "1990s",
-            "2000s",
-            "2010s",
-            "2020s",
+            "1940s", "1950s", "1960s", "1970s", "1980s", "1990s", "2000s", "2010s", "2020s",
         ]
-
-        conn = get_db_connection()
-        if not conn:
-            return standard_decades
-
         try:
-            cursor = conn.cursor()
-            # First try to get decades from explicit decade column if it exists
-            try:
-                cursor.execute("PRAGMA table_info(faces)")
-                columns = [col[1] for col in cursor.fetchall()]
-
-                if "decade" in columns:
-                    cursor.execute(
-                        "SELECT DISTINCT decade FROM faces WHERE decade IS NOT NULL AND decade != 'Unknown'"
-                    )
-                    decades = [row[0] for row in cursor.fetchall() if row[0]]
-                    if decades:
-                        # Normalize all decades to proper format (e.g., "1990s")
-                        normalized_decades = []
-                        for decade in decades:
-                            # Check if it's already properly formatted
-                            if re.match(r"^(?:19|20)\d0s$", decade):
-                                normalized_decades.append(decade)
-                            else:
-                                # Try to extract 4-digit year or 3-digit decade
-                                year_match = re.search(r"(19\d\d|20\d\d)", decade)
-                                if year_match:
-                                    year = int(year_match.group(1))
-                                    normalized_decades.append(f"{(year // 10) * 10}s")
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                # First try to get decades from explicit decade column if it exists
+                try:
+                    cursor.execute("PRAGMA table_info(faces)")
+                    columns = [col[1] for col in cursor.fetchall()]
+                    if "decade" in columns:
+                        cursor.execute(
+                            "SELECT DISTINCT decade FROM faces WHERE decade IS NOT NULL AND decade != 'Unknown'"
+                        )
+                        decades = [row[0] for row in cursor.fetchall() if row[0]]
+                        if decades:
+                            normalized_decades = []
+                            for decade in decades:
+                                if re.match(r"^(?:19|20)\d0s$", decade):
+                                    normalized_decades.append(decade)
                                 else:
-                                    # Try to match 3-digit decades (e.g. '90s)
-                                    short_decade = re.search(r"(\d0)s", decade)
-                                    if short_decade:
-                                        # Assume 19xx for < 30, 20xx for >= 30
-                                        digit = int(short_decade.group(1)[0])
-                                        century = "19" if digit < 3 else "20"
-                                        normalized_decades.append(
-                                            f"{century}{short_decade.group(1)}s"
-                                        )
-
-                        # Combine with standard decades to ensure all decades are represented
-                        all_decades = set(normalized_decades + standard_decades)
-                        return sorted(all_decades)
-            except Exception as e:
-                logging.warning(f"Could not query decade column: {e}")
-
-            # If no explicit decade column or no results, extract from filenames
-            cursor.execute("SELECT filename FROM faces")
-            filenames = [row[0] for row in cursor.fetchall() if row[0]]
-
-            unique_decades = set(standard_decades)  # Start with standard decades
-
-            for filename in filenames:
-                # Try to extract decade from filename
-                decade_match = re.search(r"((?:19|20)\d0)s", filename)
-                if decade_match:
-                    unique_decades.add(decade_match.group(0))
-                else:
-                    # Try to extract year and convert to decade
-                    year_match = re.search(r"(19\d{2}|20\d{2})", filename)
-                    if year_match:
-                        year = int(year_match.group(1))
-                        decade = f"{(year // 10) * 10}s"
-                        unique_decades.add(decade)
-
-            return sorted(list(unique_decades))
-
+                                    year_match = re.search(r"(19\d\d|20\d\d)", decade)
+                                    if year_match:
+                                        year = int(year_match.group(1))
+                                        normalized_decades.append(f"{(year // 10) * 10}s")
+                                    else:
+                                        short_decade = re.search(r"(\d0)s", decade)
+                                        if short_decade:
+                                            digit = int(short_decade.group(1)[0])
+                                            century = "19" if digit < 3 else "20"
+                                            normalized_decades.append(f"{century}{short_decade.group(1)}s")
+                            all_decades = set(normalized_decades + standard_decades)
+                            return sorted(all_decades)
+                except Exception as e:
+                    logging.warning(f"Could not query decade column: {e}")
+                cursor.execute("SELECT filename FROM faces")
+                filenames = [row[0] for row in cursor.fetchall() if row[0]]
+                unique_decades = set(standard_decades)
+                for filename in filenames:
+                    decade_match = re.search(r"((?:19|20)\d0)s", filename)
+                    if decade_match:
+                        unique_decades.add(decade_match.group(0))
+                    else:
+                        year_match = re.search(r"(19\d{2}|20\d{2})", filename)
+                        if year_match:
+                            year = int(year_match.group(1))
+                            decade = f"{(year // 10) * 10}s"
+                            unique_decades.add(decade)
+                return sorted(list(unique_decades))
         except Exception as e:
             logging.error(f"Error getting unique decades: {e}")
-            # Default fallback decades
             return ["1960s", "1970s", "1980s", "1990s", "2000s", "2010s"]
-        finally:
-            conn.close()
 
     @classmethod
     def create(
@@ -255,110 +210,76 @@ class Face:
             page_number: Page number in the yearbook (optional)
 
         Returns:
-            Tuple (Face object, connection object) if creation successful, (None, connection object) or (None, None) otherwise.
+            Face object if creation successful, None otherwise.
         """
-        conn = get_db_connection()
-        if not conn:
-            return None, None # Return None for conn as well
-
         try:
             # Extract face encoding
             encoding = extract_face_encoding(image_path)
 
             if encoding is None:
                 logging.warning(f"Could not extract face encoding from {image_path}")
-                # Do not close conn here, let the caller (index_profile_face) handle it
-                return None, conn 
+                return None
 
             # Convert encoding to bytes for storage
             encoding_blob = encoding.tobytes()
 
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO faces (filename, image_path, yearbook_year, school_name, page_number, encoding)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """,
-                (
-                    filename,
-                    image_path,
-                    yearbook_year,
-                    school_name,
-                    page_number,
-                    encoding_blob,
-                ),
-            )
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO faces (filename, image_path, yearbook_year, school_name, page_number, encoding)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        filename,
+                        image_path,
+                        yearbook_year,
+                        school_name,
+                        page_number,
+                        encoding_blob,
+                    ),
+                )
 
-            conn.commit()
+                conn.commit()
 
-            # Get the new face's ID
-            face_id = cursor.lastrowid
-            
-            # Fetch the new face using the same connection to ensure visibility
-            face_data_obj = None # Renamed to avoid conflict with 'face_data' in outer scope if any
-            if face_id:
-                # Re-use cursor is fine as previous execute is done.
-                cursor.execute("SELECT * FROM faces WHERE id = ?", (face_id,))
-                face_data_row = cursor.fetchone()
-                if face_data_row:
-                    face_data_obj = cls(**dict(face_data_row))
+                # Get the new face's ID
+                face_id = cursor.lastrowid
+                
+                # Fetch the new face using the same connection to ensure visibility
+                if face_id:
+                    cursor.execute("SELECT * FROM faces WHERE id = ?", (face_id,))
+                    face_data_row = cursor.fetchone()
+                    if face_data_row:
+                        return cls(**dict(face_data_row))
 
-            # Return the new face and the connection
-            return face_data_obj, conn # Return face object and connection
+            return None
 
         except Exception as e:
             logging.error(f"Error creating face record: {e}")
-            if conn:
-                conn.rollback()
-            # Do not close conn here, let the caller handle it
-            return None, conn # Return None for face, but still return conn for closing
-        # finally:
-            # REMOVE: if conn:
-            # REMOVE:     conn.close() # Connection will be closed by the caller (index_profile_face)
+            return None
 
     @classmethod
     def search(cls, criteria=None, limit=10):
-        """
-        Search for faces based on criteria.
-
-        Args:
-            criteria: Dictionary of search criteria (e.g., {'yearbook_year': 1990})
-            limit: Maximum number of results to return
-
-        Returns:
-            List of Face objects matching criteria
-        """
-        conn = get_db_connection()
-        if not conn:
-            return []
-
+        conn = None
         try:
-            cursor = conn.cursor()
-
-            query = "SELECT * FROM faces WHERE 1=1"
-            params = []
-
-            if criteria:
-                for key, value in criteria.items():
-                    query += f" AND {key} = ?"
-                    params.append(value)
-
-            query += " ORDER BY id DESC LIMIT ?"
-            params.append(limit)
-
-            cursor.execute(query, params)
-
-            faces = []
-            for face_data in cursor.fetchall():
-                faces.append(cls(**dict(face_data)))
-
-            return faces
-
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                query = "SELECT * FROM faces WHERE 1=1"
+                params = []
+                if criteria:
+                    for key, value in criteria.items():
+                        query += f" AND {key} = ?"
+                        params.append(value)
+                query += " ORDER BY id DESC LIMIT ?"
+                params.append(limit)
+                cursor.execute(query, params)
+                faces = []
+                for face_data in cursor.fetchall():
+                    faces.append(cls(**dict(face_data)))
+                return faces
         except Exception as e:
             logging.error(f"Error searching faces: {e}")
             return []
-        finally:
-            conn.close()
 
     @classmethod
     def get_user_matches(cls, user_id, limit=50):
@@ -371,123 +292,70 @@ class Face:
         Returns:
             List of dictionaries containing match information
         """
-        # First get user's uploaded selfies from the faces database
-        conn = get_db_connection()
-        if not conn:
-            return []
-
         try:
-            cursor = conn.cursor()
-
-            # Query for selfies uploaded by this user
-            cursor.execute(
-                """
-                SELECT * FROM faces 
-                WHERE uploaded_by = ? AND is_profile = 0
-                LIMIT ?
-            """,
-                (user_id, 5),
-            )  # Limit to 5 selfies for performance
-
-            user_selfies = cursor.fetchall()
-            if not user_selfies:
-                logging.info(f"No selfies found for user {user_id}")
-                return []
-
-            all_matches = []
-
-            # For each selfie, find similar faces using face recognition
-            from utils.face.recognition import find_similar_faces
-
-            for selfie in user_selfies:
-                selfie_data = dict(selfie)
-                selfie_path = os.path.join(
-                    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                    "static",
-                    "faces",
-                    selfie_data["filename"],
-                )
-
-                # Check if file exists
-                if not os.path.exists(selfie_path):
-                    logging.warning(f"Selfie file not found: {selfie_path}")
-                    continue
-
-                # Find similar faces
-                try:
-                    similar_faces = find_similar_faces(
-                        selfie_path, limit=int(limit / 2)
-                    )
-                    if similar_faces:
-                        all_matches.extend(similar_faces)
-                except Exception as e:
-                    logging.error(f"Error finding similar faces for {selfie_path}: {e}")
-
-            # If we couldn't find matches with face recognition, get random faces
-            if not all_matches:
-                logging.warning(
-                    f"No face matches found for user {user_id}, getting random faces"
-                )
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT * FROM faces ORDER BY RANDOM() LIMIT ?", (limit,)
+                    """
+                    SELECT * FROM faces 
+                    WHERE uploaded_by = ? AND is_profile = 0
+                    LIMIT ?
+                """,
+                    (user_id, 5),
                 )
-                random_faces = cursor.fetchall()
-
-                for face in random_faces:
-                    face_dict = dict(face)
-                    face_dict["similarity"] = (
-                        random.randint(60, 90) / 100.0
-                    )  # Random similarity score
-                    all_matches.append(face_dict)
-
-            # Get unique matches by filename
-            seen_filenames = set()
-            unique_matches = []
-
-            for match in all_matches:
-                if match["filename"] not in seen_filenames:
-                    seen_filenames.add(match["filename"])
-
-                    # Check if already claimed
-                    match["is_claimed"] = ClaimedProfile.is_claimed(match["filename"])
-                    unique_matches.append(match)
-
-            # Sort by similarity (highest first)
-            sorted_matches = sorted(
-                unique_matches, key=lambda x: x.get("similarity", 0), reverse=True
-            )
-
-            # Limit results
-            return sorted_matches[:limit]
-
+                user_selfies = cursor.fetchall()
+                if not user_selfies:
+                    logging.info(f"No selfies found for user {user_id}")
+                    return []
+                all_matches = []
+                from utils.face.recognition import find_similar_faces
+                for selfie in user_selfies:
+                    selfie_data = dict(selfie)
+                    selfie_path = os.path.join(
+                        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "static",
+                        "faces",
+                        selfie_data["filename"],
+                    )
+                    if not os.path.exists(selfie_path):
+                        logging.warning(f"Selfie file not found: {selfie_path}")
+                        continue
+                    try:
+                        similar_faces = find_similar_faces(
+                            selfie_path, limit=int(limit / 2)
+                        )
+                        if similar_faces:
+                            all_matches.extend(similar_faces)
+                    except Exception as e:
+                        logging.error(f"Error finding similar faces for {selfie_path}: {e}")
+                if not all_matches:
+                    logging.warning(
+                        f"No face matches found for user {user_id}, getting random faces"
+                    )
+                    cursor.execute(
+                        "SELECT * FROM faces ORDER BY RANDOM() LIMIT ?", (limit,)
+                    )
+                    random_faces = cursor.fetchall()
+                    for face in random_faces:
+                        face_dict = dict(face)
+                        face_dict["similarity"] = (
+                            random.randint(60, 90) / 100.0
+                        )
+                        all_matches.append(face_dict)
+                seen_filenames = set()
+                unique_matches = []
+                for match in all_matches:
+                    if match["filename"] not in seen_filenames:
+                        seen_filenames.add(match["filename"])
+                        match["is_claimed"] = ClaimedProfile.is_claimed(match["filename"])
+                        unique_matches.append(match)
+                sorted_matches = sorted(
+                    unique_matches, key=lambda x: x.get("similarity", 0), reverse=True
+                )
+                return sorted_matches[:limit]
         except Exception as e:
             logging.error(f"Error fetching user matches: {e}")
-
-            # If user_matches table doesn't exist, return some sample matches instead
-            # This is a fallback for development/testing
-            cursor.execute("SELECT * FROM faces ORDER BY id DESC LIMIT ?", (limit,))
-
-            matches = []
-            for match_data in cursor.fetchall():
-                data = dict(match_data)
-
-                # Check if already claimed
-                is_claimed = ClaimedProfile.is_claimed(data["filename"])
-
-                if not is_claimed:  # Only include unclaimed matches as fallback
-                    match_info = {
-                        "id": data["id"],
-                        "filename": data["filename"],
-                        "yearbook_year": data["yearbook_year"],
-                        "school_name": data["school_name"],
-                        "is_claimed": is_claimed,
-                    }
-
-                    matches.append(match_info)
-
-            return matches[:10]  # Limit to 10 in fallback mode
-        finally:
-            conn.close()
+            return []
 
     @classmethod
     def find_matches(cls, image_path, top_k=50):
@@ -525,28 +393,25 @@ class Face:
         if not self.id:
             return False
 
-        conn = existing_conn
-        internal_conn = False # Flag to track if connection was created internally
-        if conn is None:
-            conn = get_db_connection()
-            internal_conn = True # Connection was created here
-        
-        if not conn:
-            return False
+        if not kwargs:
+            return True  # Nothing to update
 
         try:
-            cursor = conn.cursor()
-
-            # Prepare the SQL statement with dynamic columns
-            if not kwargs:
-                return True  # Nothing to update
-
-            set_clause = ", ".join([f"{key} = ?" for key in kwargs.keys()])
-            values = list(kwargs.values()) + [self.id]
-
-            query = f"UPDATE faces SET {set_clause} WHERE id = ?"
-            cursor.execute(query, values)
-            conn.commit()
+            if existing_conn:
+                cursor = existing_conn.cursor()
+                set_clause = ", ".join([f"{key} = ?" for key in kwargs.keys()])
+                values = list(kwargs.values()) + [self.id]
+                query = f"UPDATE faces SET {set_clause} WHERE id = ?"
+                cursor.execute(query, values)
+                existing_conn.commit()
+            else:
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    set_clause = ", ".join([f"{key} = ?" for key in kwargs.keys()])
+                    values = list(kwargs.values()) + [self.id]
+                    query = f"UPDATE faces SET {set_clause} WHERE id = ?"
+                    cursor.execute(query, values)
+                    conn.commit()
 
             # Update object attributes
             for key, value in kwargs.items():
@@ -556,12 +421,9 @@ class Face:
 
         except Exception as e:
             logging.error(f"Error updating face: {e}")
-            if conn:
-                conn.rollback()
+            if existing_conn:
+                existing_conn.rollback()
             return False
-        finally:
-            if conn and internal_conn: # Only close if connection was made inside this method
-                conn.close()
 
     def delete(self):
         """
@@ -606,10 +468,12 @@ class Face:
         if self._is_claimed is not None and not refresh:
             return self._is_claimed
 
-        if not self.filename:
+        if not self.id:
             return False
 
-        self._is_claimed = ClaimedProfile.is_claimed(self.filename)
+        # Get claimed profiles for this face
+        claimed_profiles = ClaimedProfile.get_by_face_id(self.id)
+        self._is_claimed = len(claimed_profiles) > 0
         return self._is_claimed
 
     def get_claimed_profile(self):
@@ -619,10 +483,11 @@ class Face:
         Returns:
             ClaimedProfile object if claimed, None otherwise
         """
-        if not self.filename or not self.is_claimed():
+        if not self.id or not self.is_claimed():
             return None
 
-        return ClaimedProfile.get_by_filename(self.filename)
+        claimed_profiles = ClaimedProfile.get_by_face_id(self.id)
+        return claimed_profiles[0] if claimed_profiles else None
 
     def to_dict(self, include_private=False):
         # Force an ERROR log for every call to to_dict to ensure visibility
@@ -693,38 +558,17 @@ class Face:
     
         return data
 
-    @staticmethod
-    def get_states_list():
-        """
-        Get a list of states from the database.
-
-        Returns:
-            List of state names
-        """
-        conn = get_db_connection()
-        if not conn:
-            return []
-
+    @classmethod
+    def get_states_list(cls):
+        """Get a list of all unique states from faces."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT DISTINCT school_name FROM faces WHERE school_name IS NOT NULL"
-            )
-
-            states = set()
-            for school in cursor.fetchall():
-                if school["school_name"] and "," in school["school_name"]:
-                    state = school["school_name"].split(",")[-1].strip()
-                    if state:
-                        states.add(state)
-
-            return sorted(states)
-
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT DISTINCT state FROM faces WHERE state IS NOT NULL ORDER BY state")
+                return [row[0] for row in cursor.fetchall()]
         except Exception as e:
             logging.error(f"Error fetching states list: {e}")
             return []
-        finally:
-            conn.close()
 
     @staticmethod
     def get_decades_list():
@@ -734,32 +578,27 @@ class Face:
         Returns:
             List of decade strings (e.g., ['1950s', '1960s'])
         """
-        conn = get_db_connection()
-        if not conn:
-            return []
-
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT DISTINCT yearbook_year FROM faces WHERE yearbook_year IS NOT NULL"
-            )
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT DISTINCT yearbook_year FROM faces WHERE yearbook_year IS NOT NULL"
+                )
 
-            decades = set()
-            for year in cursor.fetchall():
-                if year["yearbook_year"]:
-                    try:
-                        y = int(year["yearbook_year"])
-                        decades.add(f"{(y // 10) * 10}s")
-                    except (ValueError, TypeError):
-                        pass
+                decades = set()
+                for year in cursor.fetchall():
+                    if year["yearbook_year"]:
+                        try:
+                            y = int(year["yearbook_year"])
+                            decades.add(f"{(y // 10) * 10}s")
+                        except (ValueError, TypeError):
+                            pass
 
-            return sorted(decades)
+                return sorted(decades)
 
         except Exception as e:
             logging.error(f"Error fetching decades list: {e}")
             return []
-        finally:
-            conn.close()
 
     @classmethod
     def get_random_selection(cls, count=10):
@@ -772,26 +611,18 @@ class Face:
         Returns:
             List of Face objects
         """
-        conn = get_db_connection()
-        if not conn:
-            return []
-
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM faces ORDER BY RANDOM() LIMIT ?", (count,))
-
-            faces = []
-            for face_data in cursor.fetchall():
-                face = cls(**dict(face_data))
-                faces.append(face)
-
-            return faces
-
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM faces ORDER BY RANDOM() LIMIT ?", (count,))
+                faces = []
+                for face_data in cursor.fetchall():
+                    face = cls(**dict(face_data))
+                    faces.append(face)
+                return faces
         except Exception as e:
             logging.error(f"Error getting random face selection: {e}")
             return []
-        finally:
-            conn.close()
 
     @classmethod
     def get_random_for_display(cls):
@@ -801,36 +632,24 @@ class Face:
         Returns:
             Dictionary with face data or None if no faces found
         """
-        conn = get_db_connection()
-        if not conn:
-            return None
-
         try:
-            cursor = conn.cursor()
-            # Filter for faces with yearbook data if possible
-            cursor.execute(
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT * FROM faces 
+                    WHERE yearbook_year IS NOT NULL
+                    ORDER BY RANDOM() LIMIT 1
                 """
-                SELECT * FROM faces 
-                WHERE yearbook_year IS NOT NULL
-                ORDER BY RANDOM() LIMIT 1
-            """
-            )
-
-            face_data = cursor.fetchone()
-
-            # If no faces with yearbook data, get any face
-            if not face_data:
-                cursor.execute("SELECT * FROM faces ORDER BY RANDOM() LIMIT 1")
+                )
                 face_data = cursor.fetchone()
-
-            if face_data:
-                face = cls(**dict(face_data))
-                return face.to_dict(include_private=True)
-
-            return None
-
+                if not face_data:
+                    cursor.execute("SELECT * FROM faces ORDER BY RANDOM() LIMIT 1")
+                    face_data = cursor.fetchone()
+                if face_data:
+                    face = cls(**dict(face_data))
+                    return face.to_dict(include_private=True)
+                return None
         except Exception as e:
             logging.error(f"Error getting random face: {e}")
             return None
-        finally:
-            conn.close()

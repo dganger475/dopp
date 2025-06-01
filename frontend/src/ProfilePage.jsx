@@ -1,28 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import API_BASE_URL from "./config/api";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import API_BASE_URL, { getApiUrl } from "./config/api";
 import { useNavigate } from 'react-router-dom';
 import styles from './ProfilePage.module.css';
-import CoverPhoto from './profilepage/coverphoto';
+import './ProfilePageOverrides.css'; // Import direct CSS overrides
 import ProfileImageBorder from './profilepage/profileimageborder';
-import UsernamePill from './profilepage/usernamepill';
-import UsernamePillText from './profilepage/usernamepilltext';
-import UsersFullName from './profilepage/usersfullname';
+// Import the match card name pill components instead
+import NamePill from './searchPage/searchResult/match card name pill';
+import NamePillText from './searchPage/searchResult/match card name pill text';
 import BioContainer from './profilepage/biocontainer';
-import BioText from './profilepage/biotext';
-import CurrentCity from './profilepage/currentcity';
-import Hometown from './profilepage/hometown';
-import MemberSince from './profilepage/membersince';
 import EditProfileButton from './profilepage/editprofilebutton';
 import AddMatchButton from './profilepage/addmatchbutton';
-import BioInput from './profilepage/bioinput';
-import BioLable from './profilepage/biolable';
-import MatchBadge1 from './profilepage/matchbadge/matchbadge1';
-import MatchBadgeText from './profilepage/matchbadge/80percentmatchbadgetext';
 import UniversalCard from './components/UniversalCard';
+import ErrorBoundary from './components/ErrorBoundary';
+import LazyImage from './components/LazyImage';
 
 const MOBILE_BREAKPOINT = 768;
+const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
-const ProfilePage = () => {
+// Memoized loading component
+const LoadingSpinner = React.memo(() => (
+  <div className={styles.loadingContainer}>
+    <div className={styles.loadingSpinner}></div>
+    <p>Loading profile...</p>
+  </div>
+));
+
+// Memoized error component
+const ErrorDisplay = React.memo(({ error, onRetry }) => (
+  <div className={styles.errorContainer}>
+    <h2>Error Loading Profile</h2>
+    <p>{error}</p>
+    <button onClick={onRetry} className={styles.retryButton}>
+      Retry
+    </button>
+  </div>
+));
+
+const ProfilePageContent = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +45,107 @@ const ProfilePage = () => {
   const [loadingMatches, setLoadingMatches] = useState(true);
   const [matchesError, setMatchesError] = useState(null);
   const navigate = useNavigate();
+  const [imageLoading, setImageLoading] = useState({
+    profile: true,
+    cover: true
+  });
+
+  // Memoized handlers
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const handleImageLoad = useCallback((type) => {
+    setImageLoading(prev => ({ ...prev, [type]: false }));
+    const imageUrl = type === 'profile' ? getProfileImageUrl() : getCoverPhotoUrl();
+    const cacheKey = `cached_${type}_image`;
+    const cacheData = {
+      url: imageUrl,
+      timestamp: Date.now()
+    };
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+    } catch (err) {
+      console.warn('Failed to cache image:', err);
+    }
+  }, []);
+
+  const handleImageError = useCallback((type) => {
+    setImageLoading(prev => ({ ...prev, [type]: false }));
+    const cacheKey = `cached_${type}_image`;
+    try {
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        const { url, timestamp } = JSON.parse(cachedData);
+        if (Date.now() - timestamp < CACHE_EXPIRATION) {
+          return url;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to read cached image:', err);
+    }
+    return type === 'profile' ? getApiUrl('/static/images/default_profile.svg') : getApiUrl('/static/images/default_cover_photo.png');
+  }, []);
+
+  // Memoized URL getters
+  const getProfileImageUrl = useCallback(() => {
+    if (!userProfile?.user) return getApiUrl('/static/images/default_profile.svg');
+    
+    const userData = userProfile.user;
+    let imageUrl = userData.profile_image_url || userData.profile_picture;
+    
+    if (!imageUrl) return getApiUrl('/static/images/default_profile.svg');
+    
+    // Ensure the URL is absolute
+    if (!imageUrl.startsWith('http')) {
+      imageUrl = getApiUrl(imageUrl);
+    }
+    
+    // Add cache-busting only if we have an update timestamp
+    const lastUpdate = userData.profile_image_updated_at || userData.updated_at;
+    if (lastUpdate) {
+      const timestamp = new Date(lastUpdate).getTime();
+      return `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${timestamp}`;
+    }
+    
+    return imageUrl;
+  }, [userProfile]);
+
+  const getCoverPhotoUrl = useCallback(() => {
+    if (!userProfile?.user) return getApiUrl('/static/images/default_cover_photo.png');
+    
+    const userData = userProfile.user;
+    let imageUrl = userData.cover_photo_url || userData.cover_photo;
+    
+    if (!imageUrl) return getApiUrl('/static/images/default_cover_photo.png');
+    
+    // Ensure the URL is absolute
+    if (!imageUrl.startsWith('http')) {
+      imageUrl = getApiUrl(imageUrl);
+    }
+    
+    // Add cache-busting only if we have an update timestamp
+    const lastUpdate = userData.cover_photo_updated_at || userData.updated_at;
+    if (lastUpdate) {
+      const timestamp = new Date(lastUpdate).getTime();
+      return `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}t=${timestamp}`;
+    }
+    
+    return imageUrl;
+  }, [userProfile]);
+
+  // Memoized user data
+  const userData = useMemo(() => userProfile?.user || null, [userProfile]);
+  const memberSince = useMemo(() => {
+    if (!userData) return 'Unknown';
+    const date = userData.memberSince || userData.created_at;
+    return date ? new Date(date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Unknown';
+  }, [userData]);
+
+  const currentCity = useMemo(() => 
+    userData?.current_city || userData?.current_location_city || 'Location Unknown',
+    [userData]
+  );
 
   // Remove existing styles from wrong server
   useEffect(() => {
@@ -52,49 +167,110 @@ const ProfilePage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Add a state to track if we need to force refresh
+  const [forceRefresh, setForceRefresh] = useState(0);
+  
+  // Force a refresh when component mounts or when returning from edit page
+  useEffect(() => {
+    // Increment the force refresh counter to trigger a data reload
+    const timer = setTimeout(() => {
+      setForceRefresh(prev => prev + 1);
+    }, 100); // Small delay to ensure component is fully mounted
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   // Fetch user data
   useEffect(() => {
+    // Force refresh when returning from edit profile page or when forceRefresh changes
     const fetchUserData = async () => {
+      // Clear any cached data
+      setUserProfile(null);
+      localStorage.removeItem('profileData'); // Clear any localStorage cache
+      
       try {
-        const response = await fetch(`${API_BASE_URL}/profile/`, {
+        // Add cache-busting parameter to prevent browser caching
+        const timestamp = new Date().getTime();
+        const url = `${API_BASE_URL}/api/profile/data`;
+        console.log('Fetching fresh profile data from:', url);
+        
+        const response = await fetch(url, {
+          method: 'GET',
           credentials: 'include',
           headers: {
-            'Accept': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          },
+          cache: 'no-store' // Tell fetch to bypass the HTTP cache
         });
+
         if (!response.ok) {
-          throw new Error('Failed to fetch user data');
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`Failed to fetch user data: ${response.status} ${response.statusText}`);
         }
+        
+        // Check if we got HTML instead of JSON (this sometimes happens)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+          const html = await response.text();
+          console.error('Received HTML instead of JSON:', html.substring(0, 500));
+          throw new Error('Received HTML instead of JSON. Please refresh the page.');
+        }
+        
         const data = await response.json();
-        if (data.success) {
-          setUserProfile(data);
-        } else {
-          throw new Error(data.error || 'Failed to load user data');
+        console.log('Received profile data:', data);
+        
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch user data');
         }
+        
+        // Process the user profile data which includes matches
+        processUserProfile(data);
       } catch (err) {
+        console.error('Error in fetchUserData:', err);
         setError(err.message);
+        // Show a more user-friendly error message
+        setError(`Unable to load profile data. ${err.message}. Please try refreshing the page.`);
       } finally {
         setLoading(false);
       }
     };
 
-
+    // The matches are included in the profile data
+    const processUserProfile = (data) => {
+      setUserProfile(data);
+      if (data && data.matches) {
+        setMatches(data.matches);
+        setLoadingMatches(false);
+      }
+    };
+    
     const fetchMatches = async () => {
+      // This is now just a fallback in case the profile data doesn't include matches
       try {
-        // Use API_BASE_URL for API requests only. Do not rewrite <img> src for CSS or fonts.
-
+        if (userProfile && userProfile.matches) {
+          setMatches(userProfile.matches);
+          setLoadingMatches(false);
+          return;
+        }
+        
+        // Use the correct endpoint for fetching matches
         const matchesResponse = await fetch(`${API_BASE_URL}/social/matches/api/matches/sync`, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         });
         if (!matchesResponse.ok) {
           throw new Error('Failed to fetch matches');
         }
         const data = await matchesResponse.json();
-        // Combine claimed and added matches
-        const claimed = (data.claimed || []).map(m => ({ ...m, type: 'claimed' }));
-        const added = (data.added || []).map(m => ({ ...m, type: 'added' }));
-        setMatches([...claimed, ...added]);
+        setMatches(data.matches || []);
       } catch (err) {
+        console.error('Error fetching matches:', err);
         setMatchesError(err.message);
       } finally {
         setLoadingMatches(false);
@@ -103,102 +279,129 @@ const ProfilePage = () => {
 
     fetchUserData();
     fetchMatches();
-  }, []);
+    
+    // Add a listener for when the page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Page is now visible, refreshing profile data');
+        fetchUserData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [forceRefresh]);  // Include forceRefresh to ensure data is refreshed when it changes
 
-  if (loading) {
-    return <div className="loading">Loading profile...</div>;
-  }
-
-  if (error) {
-    return <div className="error">Error: {error}</div>;
-  }
-
-  if (!userProfile) {
-    return <div className="error">No profile data found.</div>;
-  }
-
-  // Use robust fallbacks for images
-  const profileImageUrl = userProfile.image || '/static/images/default_profile.jpg';
-  const coverPhotoUrl = userProfile.coverPhoto || '/static/images/default_cover_photo.png';
   // Ensure we're properly mounted at the expected route
   useEffect(() => {
     document.title = 'Profile | DoppleGanger';
   }, []);
 
   return (
-    <div className={styles['profile-page']} style={{ fontFamily: 'Arial, Helvetica Neue, Helvetica, sans-serif' }}>
-      {/* Cover photo at top, profile image overlaps */}
-      <div
-        className={styles.coverPhoto}
-        style={{ backgroundImage: `url('${coverPhotoUrl}')` }}
-      >
-        <div className={styles.fixedProfileInfo}>
-          <div className={styles.profileImageOuterWrap}>
-            <div className={styles.profileImageContainer}>
-              <ProfileImageBorder image={profileImageUrl} />
-              <div className={styles.usernamePillRow}>
-                <UsernamePill>
-                  <UsernamePillText text={userProfile.username} />
-                </UsernamePill>
+    <div className={styles.profileContainer}>
+      {loading ? (
+        <LoadingSpinner />
+      ) : error ? (
+        <ErrorDisplay error={error} onRetry={handleRetry} />
+      ) : !userProfile?.user ? (
+        <ErrorDisplay 
+          error="Unable to load profile data. Please try refreshing the page." 
+          onRetry={handleRetry} 
+        />
+      ) : (
+        <>
+          {/* Cover Photo */}
+          <div className={`${styles.coverPhotoContainer} ${imageLoading.cover ? styles.imageLoading : ''}`}>
+            <LazyImage
+              src={getCoverPhotoUrl()}
+              alt="Cover photo"
+              className={`${styles.coverPhoto} ${styles.progressiveImage} ${!imageLoading.cover ? styles.loaded : ''}`}
+              onLoad={() => handleImageLoad('cover')}
+              onError={(e) => {
+                console.warn('Failed to load cover photo:', e.target.src);
+                e.target.src = getApiUrl('/static/images/default_cover_photo.png');
+                handleImageError('cover');
+              }}
+            />
+            {imageLoading.cover && (
+              <div className={styles.loadingPlaceholder}>
+                Loading cover photo...
               </div>
-              <div className={styles.bioSection}>
-                <BioContainer>
-                  {userProfile.bio || 'No bio provided.'}
-                </BioContainer>
+            )}
+            
+            <AddMatchButton profile={userData} className={styles.addMatchBtn} />
+            <EditProfileButton onClick={() => navigate('/edit-profile')} className={styles.editProfileBtn} />
+          </div>
+
+          {/* Profile Header */}
+          <div className={styles.profileHeader}>
+            <div className={styles.memberSinceSide}>
+              <div className={styles.memberSinceLabel}>Member since</div>
+              <div className={styles.memberSinceDate}>{memberSince}</div>
+            </div>
+            
+            <div className={styles.locationContainer}>
+              {currentCity}
+            </div>
+            
+            <div className={styles.profileImageWrapper}>
+              <div className={`${styles.profileImageContainer} ${imageLoading.profile ? styles.imageLoading : ''}`}>
+                <ProfileImageBorder
+                  image={getProfileImageUrl()}
+                  onLoad={() => handleImageLoad('profile')}
+                  onError={(e) => {
+                    console.warn('Failed to load profile photo:', e.target.src);
+                    e.target.src = getApiUrl('/static/images/default_profile.svg');
+                    handleImageError('profile');
+                  }}
+                  className={`${styles.progressiveImage} ${!imageLoading.profile ? styles.loaded : ''}`}
+                />
+                {imageLoading.profile && (
+                  <div className={styles.loadingPlaceholder}>
+                    Loading profile photo...
+                  </div>
+                )}
+              </div>
+              <div className={styles.usernameContainer}>
+                <div className={styles.usernamePill}>
+                  <div className={styles.usernamePillText}>
+                    {userData?.username || '@Username'}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Fixed Add Match button in top left */}
-      <AddMatchButton profile={userProfile} className={`${styles.addMatchBtn} ${styles.fixedAddMatchBtn}`} />
-      {/* Fixed Edit Profile button in top right */}
-      <EditProfileButton onClick={() => navigate('/edit-profile')} className={`${styles.editProfileBtn} ${styles.fixedEditProfileBtn}`} />
-
-      {/* Info row: member since left, city/hometown right */}
-      <div className={styles.infoRow}>
-        <div className={styles.cityHometown}>
-          {userProfile.current_city && <span>{userProfile.current_city}</span>}
-          {userProfile.hometown && (
-            <span style={{ marginLeft: userProfile.current_city ? 8 : 0 }}>
-              {userProfile.hometown}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Matches grid at the bottom */}
-      <div className={styles.matchesSection}>
-        {loadingMatches ? (
-          <div className="loading">Loading matches...</div>
-        ) : matchesError ? (
-          <div className="error">Error loading matches: {matchesError}</div>
-        ) : matches.length > 0 ? (
-          <div className={styles.matchesGrid}>
-            {matches.map((match, index) => (
-              <UniversalCard
-                key={match.id || index}
-                image={match.filename ? `${API_BASE_URL}/face/image/${match.id}` : '/default_profile.png'}
-                username={match.username || (match.relationship === 'UNCLAIMED PROFILE' ? 'Unclaimed Profile' : 'Registered User')}
-                label={match.relationship || 'REGISTERED USER'}
-                labelColor={'#fff'}
-                labelBg={match.relationship === 'UNCLAIMED PROFILE' ? 'var(--dopple-blue)' : 'var(--dopple-red)'}
-                decade={match.decade || ''}
-                state={match.state || ''}
-                similarity={match.similarity !== undefined ? Math.round(match.similarity * 100) : undefined}
-                isRegistered={match.relationship !== 'UNCLAIMED PROFILE'}
-                className={match.relationship === 'UNCLAIMED PROFILE' ? styles.matchCardUnclaimed : styles.matchCardClaimed}
-              />
-            ))}
+          {/* Bio Section */}
+          <div className={styles.bioSection}>
+            <BioContainer>
+              {userData?.bio || 'No bio provided.'}
+            </BioContainer>
           </div>
-        ) : null}
-        <div className={styles.matchesFoundText} style={{ marginTop: 48, marginBottom: 0 }}>
-          Matches Found: {matches.length}
-        </div>
-      </div>
+          
+          {/* Edit Profile Button */}
+          <div className={styles.editProfileContainer}>
+            <button 
+              onClick={() => navigate('/edit-profile')} 
+              className={styles.editProfileButton}
+            >
+              Edit Profile
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
+
+// Wrap the component with ErrorBoundary
+const ProfilePage = () => (
+  <ErrorBoundary>
+    <ProfilePageContent />
+  </ErrorBoundary>
+);
 
 export default ProfilePage;

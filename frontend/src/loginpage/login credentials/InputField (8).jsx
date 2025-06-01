@@ -2,21 +2,20 @@ import React from 'react';
 
 const styles = {
   Input: {
-    top: '146px',
-    left: '32px',
-    width: '296px',
+    width: '100%',
     height: '44px',
-    padding: '0px 8px',
-    border: '0',
+    padding: '0px 12px',
+    border: '1px solid #ddd',
     boxSizing: 'border-box',
     borderRadius: '6px',
-    backgroundColor: '#e4e6eb',
-    color: '#94a3b8',
+    backgroundColor: '#f5f5f5',
+    color: '#333',
     fontSize: '14px',
-    fontFamily: 'Source Sans Pro',
-    fontWeight: 700,
+    fontFamily: 'Arial, sans-serif',
+    fontWeight: 400,
     lineHeight: '44px',
     outline: 'none',
+    transition: 'all 0.2s ease',
   },
 };
 

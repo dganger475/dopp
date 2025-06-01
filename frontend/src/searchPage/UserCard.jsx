@@ -24,20 +24,36 @@ const UserCard = ({
         }}
       />
       <div
-        // className="user-pill" // Not a defined class in main.css snippet, using inline with CSS vars
         style={{
-          background: 'var(--dopple-black)',
-          color: 'var(--dopple-white)',
+          background: '#333333',
+          color: '#ffffff',
           padding: '6px 14px',
-          borderRadius: 'var(--dopple-border-radius, 16px)',
+          borderRadius: '8px',
           fontWeight: '600',
           fontSize: '15px',
           marginBottom: '8px',
-          display: 'inline-block',
-          lineHeight: 'normal' // Added for better text centering in pill
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+          width: 'auto',
+          minWidth: '100px',
+          maxWidth: '140px'
         }}
       >
-        {username || '@your_username'}
+        <span style={{
+          color: '#ffffff',
+          fontSize: '15px',
+          fontFamily: 'Arial, sans-serif',
+          fontWeight: '600',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '120px',
+          padding: '0 4px'
+        }}>
+          {username || '@your_username'}
+        </span>
       </div>
       <p style={{ fontSize: '14px', color: 'var(--dopple-black)', margin: 0 }}>
         {cityState || 'Your City, ST'}

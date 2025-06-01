@@ -19,7 +19,7 @@ from flask import (
     url_for,
 )
 
-from models.notification import Notification
+from models.social.notification import Notification
 from models.social import ClaimedProfile
 from models.user import User
 from routes.auth import login_required

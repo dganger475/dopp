@@ -1,87 +1,61 @@
 import React, { useState } from 'react';
 
-const styles = {
-  Container: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '10px',
-  },
-  Input: {
-    flex: 1,
-    height: '40px',
-    padding: '0 12px',
-    border: '2px solid #030303',
-    boxSizing: 'border-box',
-    borderRadius: '6px',
-    backgroundColor: '#e4e6eb',
-    color: '#050505',
-    fontSize: '14px',
-    fontFamily: 'Source Sans Pro',
-    fontWeight: 700,
-    outline: 'none',
-  },
-  Button: {
-    height: '40px',
-    padding: '0 16px',
-    border: '2px solid #030303',
-    borderRadius: '6px',
-    backgroundColor: '#1b74e4',
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'opacity 0.2s ease',
-  },
-  ButtonDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  }
-};
-
-const MatchPostInputField = ({ onSubmit, placeholder = 'Write a comment...' }) => {
+const MatchPostInputField = ({ onSubmit, placeholder, style = {} }) => {
   const [comment, setComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!comment.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    try {
-      await onSubmit(comment);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (comment.trim()) {
+      onSubmit(comment);
       setComment('');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
     }
   };
 
   return (
-    <div style={styles.Container}>
+    <form 
+      onSubmit={handleSubmit}
+      style={{
+        display: 'flex',
+        gap: '8px',
+        ...style
+      }}
+    >
       <input
-        style={styles.Input}
-        placeholder={placeholder}
+        type="text"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        onKeyPress={handleKeyPress}
-        disabled={isSubmitting}
+        placeholder={placeholder}
+        style={{
+          flex: 1,
+          backgroundColor: '#ffffff',
+          border: '1px solid #e0e0e0',
+          borderRadius: '4px',
+          padding: '4px 8px',
+          fontSize: '12px',
+          color: '#000000',
+          outline: 'none',
+          ...(style['& input'] || {})
+        }}
       />
       <button
+        type="submit"
+        disabled={!comment.trim()}
         style={{
-          ...styles.Button,
-          ...(isSubmitting || !comment.trim() ? styles.ButtonDisabled : {})
+          backgroundColor: '#000000',
+          color: '#ffffff',
+          border: 'none',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          cursor: comment.trim() ? 'pointer' : 'not-allowed',
+          opacity: comment.trim() ? 1 : 0.5,
+          transition: 'opacity 0.2s',
+          ...(style['& button'] || {})
         }}
-        onClick={handleSubmit}
-        disabled={isSubmitting || !comment.trim()}
       >
-        {isSubmitting ? 'Sending...' : 'Send'}
+        Post
       </button>
-    </div>
+    </form>
   );
 };
 

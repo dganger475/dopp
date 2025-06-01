@@ -4,9 +4,11 @@ const styles = {
   Text: {
     color: '#1c1e21',
     fontSize: '24px',
-    fontFamily: 'Source Sans Pro',
+    fontFamily: 'Arial, sans-serif',
     fontWeight: 300,
     lineHeight: '32px',
+    textAlign: 'center',
+    marginTop: '1rem',
   },
 };
 

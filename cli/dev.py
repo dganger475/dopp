@@ -44,7 +44,7 @@ def setup_dev():
         click.echo(f"Created directory: {dir_path}")
     
     # Initialize database
-    from utils.db.database import db
+    from extensions import db
     db.create_all()
     click.echo("Initialized database")
     

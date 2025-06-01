@@ -1,0 +1,40 @@
+@keyframes shareToFeed {
+  0% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(0.95) translateY(0);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(0.4) translateY(-100vh);
+    opacity: 0;
+  }
+}
+
+/* Add a subtle bounce effect when the card appears */
+@keyframes cardAppear {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.match-post-card {
+  transform-origin: center center;
+  will-change: transform, opacity;
+  animation: cardAppear 0.4s ease-out;
+}
+
+.match-post-card.animate-share {
+  animation: shareToFeed 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

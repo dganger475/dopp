@@ -24,13 +24,13 @@ import numpy as np
 
 from models.face import Face
 from models.social import ClaimedProfile, Post
-from models.sqlalchemy_models import db
+from extensions import db
 from models.user import User
 from models.user_match import UserMatch
 from routes.auth import login_required
 from utils.db.database import get_db_connection, get_users_db_connection
 from utils.face.metadata import enhance_face_with_metadata, get_metadata_for_face
-from utils.image_paths import normalize_profile_image_path
+from utils.image_paths import normalize_profile_image_path, normalize_extracted_face_path
 from utils.index.faiss_manager import faiss_index_manager
 from utils.search_helpers import (
     apply_privacy_filters,
@@ -40,18 +40,19 @@ from utils.search_helpers import (
 )
 from utils.face.recognition import extract_face_encoding, find_similar_faces_faiss, calculate_similarity
 from models.user_match import UserMatch
+from utils.serializers import serialize_match_card
 
-search_bp = Blueprint("search", __name__)
+search = Blueprint("search", __name__)
 
 
-@search_bp.route("/", methods=["GET"])
+@search.route("/", methods=["GET"])
 @login_required
 def search_page():
     """Display the search page."""
     return render_template("search.html")
 
 
-@search_bp.route("/api/search", methods=["GET"])
+@search.route("/api/search", methods=["GET"])
 def api_search():
     """API endpoint for finding lookalikes using face similarity search (FAISS and registered users)."""
     current_app.logger.info("[SEARCH] API search endpoint called")
@@ -64,24 +65,70 @@ def api_search():
     if not user:
         return jsonify({"error": "User not found", "success": False}), 401
 
-    if not hasattr(user, "profile_image") or not user.profile_image or \
-       user.profile_image in ['default_profile.png', 'default.png', 'default.jpg'] or \
-       'default' in user.profile_image.lower():
+    # Check if user exists in faces.db to ensure we have proper profile data
+    conn_users = get_users_db_connection()
+    if not conn_users:
+        return jsonify({"error": "Database connection failed", "success": False}), 500
+
+    cursor = conn_users.cursor()
+    cursor.execute("SELECT id, profile_image, face_encoding FROM users WHERE id = ?", (user_id,))
+    user_db_record = cursor.fetchone()
+        
+    if not user_db_record:
         return jsonify({
-            "error": "Valid profile image required",
-            "message": "Please upload your own clear face photo to find your historical lookalikes. Default images cannot be used.",
+            "error": "User record not found in database",
+            "message": "Could not find your user record. Please try logging in again.",
             "results": [], "total": 0, "success": False
         }), 400
 
+    # Initialize variables for profile image path
+    profile_image_fs_path = None
+    has_profile_image = False
+    
     try:
-        profile_image_fs_path = resolve_profile_image_path(user)
-        if not profile_image_fs_path or not os.path.exists(profile_image_fs_path):
+        # Check if user has stored face encoding in users table
+        if user_db_record and user_db_record['face_encoding']:
+            has_profile_image = True
+        
+        # Also check if user has a claimed face in the faces table
+        cursor.execute("SELECT filename FROM faces WHERE claimed_by_user_id = ?", (user_id,))
+        claimed_face = cursor.fetchone()
+        if claimed_face:
+            has_profile_image = True
+            # If we have a claimed face, use it as the profile image
+            if claimed_face['filename']:
+                profile_image_fs_path = os.path.join(current_app.root_path, 'static', 'faces', claimed_face['filename'])
+        
+        # Try to resolve from user profile if not found yet
+        if not has_profile_image or not profile_image_fs_path:
+            profile_image_fs_path = resolve_profile_image_path(user)
+            if profile_image_fs_path and os.path.exists(profile_image_fs_path):
+                has_profile_image = True
+        
+        # Last attempt - check if there's a userprofile_[user_id] file in faces directory
+        if not has_profile_image or not profile_image_fs_path:
+            potential_profile_file = f"userprofile_{user_id}.jpg"
+            potential_path = os.path.join(current_app.root_path, 'static', 'faces', potential_profile_file)
+            
+            if os.path.exists(potential_path):
+                profile_image_fs_path = potential_path
+                has_profile_image = True
+                current_app.logger.debug(f"[SEARCH] Found user profile in faces dir: {profile_image_fs_path}")
+        
+        # Return available search data (no face matching) for users without profile images
+        # This allows the search page to load even if the user doesn't have a face photo
+        if not has_profile_image or not profile_image_fs_path or not os.path.exists(profile_image_fs_path):
+            # Return basic search data without face matching
             return jsonify({
-                "error": "Profile image not found on server",
-                "message": "Could not locate your profile image. Please try uploading it again.",
-                "results": [], "total": 0, "success": False
-            }), 400
+                "warning": "No profile image available for face matching",
+                "message": "Upload a profile image to enable face matching",
+                "results": [], 
+                "total": 0, 
+                "hasProfileImage": False,
+                "success": True
+            })
 
+        # Load the image and detect faces
         image = face_recognition.load_image_file(profile_image_fs_path)
         face_locations = face_recognition.face_locations(image)
         if not face_locations:
@@ -90,12 +137,17 @@ def api_search():
                 "message": "Could not detect a face in your profile image. Please upload a clear face photo.",
                 "results": [], "total": 0, "success": False
             }), 400
+            
+        # Get face encoding from the detected face
         current_user_face_encoding = face_recognition.face_encodings(image, face_locations)[0]
 
         # 1. Fetch FAISS matches (historical photos)
         faiss_results_formatted = []
+        # Get liked faces for the current user
+        liked_face_ids = UserMatch.get_liked_face_ids_by_user(user.id)
+        
         try:
-            liked_face_ids = UserMatch.get_liked_face_ids_by_user(user.id)
+            # Do FAISS search with face recognition to find matches
             faiss_matches_raw, faiss_error = get_enriched_faiss_matches(
                 user_profile_image_fs_path=profile_image_fs_path,
                 faiss_index_manager=faiss_index_manager,
@@ -105,71 +157,19 @@ def api_search():
             )
             if faiss_error:
                 current_app.logger.error(f"[SEARCH] Error fetching FAISS matches: {faiss_error}")
+            current_app.logger.info(f"[SEARCH] FAISS raw matches count: {len(faiss_matches_raw) if faiss_matches_raw else 0}")
             if faiss_matches_raw:
                 for fm_raw in faiss_matches_raw:
-                    # Get the image URL from the FAISS match - use safe_image_path first if available
-                    image_url = fm_raw.get('safe_image_path', '')
-                    if not image_url:
-                        image_url = fm_raw.get('image_url', '')
-                    
-                    # Fallback if still no image URL
-                    if not image_url or not image_url.startswith(('/static/', 'http')):
-                        image_url = f"/static/faces/{fm_raw.get('filename', '')}"
-                    
-                    # Log the image path we're using
-                    current_app.logger.debug(f"[SEARCH] Using image URL for FAISS match: {image_url}")
-                    
-                    # Generate a privacy-safe ID for unregistered users based on index or filename hash
-                    face_id = fm_raw.get('id') or (hash(fm_raw.get('filename', '')) % 10000000)
-                    
-                    # Determine if this is a registered user (has claimed user data)
-                    is_registered = bool(fm_raw.get('claimed_by_user_id'))
-                    
-                    # Use a privacy-safe username for unregistered users
-                    # Only use actual username for registered users
-                    if is_registered:
-                        display_username = fm_raw.get('claimed_by_username') or fm_raw.get('claimant_username') or 'Registered User'
-                    else:
-                        # Privacy-safe alternative - use ID + decade if available
-                        decade_text = fm_raw.get('decade', '')
-                        state_text = fm_raw.get('state', '')
-                        location_text = ''
-                        
-                        if decade_text and state_text:
-                            location_text = f"{state_text}, {decade_text}"
-                        elif decade_text:
-                            location_text = decade_text
-                        elif state_text:
-                            location_text = state_text
-                            
-                        display_username = f"Profile #{face_id}" if not location_text else f"Profile #{face_id} ({location_text})"
-                    
-                    # Determine data source for tracking
-                    # If filename starts with userprofile_, it's from users table; otherwise, it's from faces table
-                    filename_str = fm_raw.get('filename', '')
-                    data_source = "users_table" if filename_str.startswith("userprofile_") else "faces_table"
-                    
-                    # If the filename indicates this is a user profile, it should be marked as registered
-                    if filename_str.startswith("userprofile_"):
-                        is_registered = True
-                        current_app.logger.debug(f"[SEARCH] Identified user profile from filename: {filename_str}")
-                    
-                    # Format the result consistently with registered users
-                    faiss_results_formatted.append({
-                        "id": f"face_{face_id}",
-                        "username": display_username,
-                        "image": image_url,
-                        "safe_image_path": image_url,  # Add this for consistency
-                        "decade": fm_raw.get('decade', ''),
-                        "state": fm_raw.get('state', ''),
-                        "similarity": float(fm_raw.get('similarity', 0)),  # Already in 0-1 scale from get_enriched_faiss_matches
-                        "is_registered": is_registered,
-                        "is_historical": True,
-                        "location": fm_raw.get('state', '') or fm_raw.get('school_name', ''),
-                        "claimed_by_user_id": fm_raw.get('claimed_by_user_id'),
-                        "original_filename": fm_raw.get('filename'), # Keep this for internal use, not displayed to users
-                        "data_source": data_source  # Track which table this came from
-                    })
+                    # Get the Face model or dict
+                    face = fm_raw
+                    user = None
+                    if fm_raw.get('claimed_by_user_id'):
+                        user = User.get_by_id(fm_raw['claimed_by_user_id'])
+                    similarity = fm_raw.get('similarity')
+                    current_app.logger.debug(f"[SEARCH] FAISS match raw data: {fm_raw}")
+                    current_app.logger.debug(f"[SEARCH] FAISS match similarity: {similarity}")
+                    faiss_results_formatted.append(serialize_match_card(face, user=user, similarity=similarity))
+            current_app.logger.info(f"[SEARCH] FAISS formatted results count: {len(faiss_results_formatted)}")
         except Exception as e_faiss:
             current_app.logger.error(f"[SEARCH] Exception during FAISS search: {str(e_faiss)}")
 
@@ -179,12 +179,31 @@ def api_search():
         try:
             conn_users = get_users_db_connection()
             cursor = conn_users.cursor()
+            
+            # First try to get users with non-default images and valid face encodings
             cursor.execute("""
                 SELECT u.id, u.username, u.profile_image, u.face_encoding, u.current_location_city, u.current_location_state
                 FROM users u WHERE u.id != ? AND u.face_encoding IS NOT NULL AND u.profile_image IS NOT NULL
                 AND u.profile_image NOT LIKE '%default%' AND u.profile_image != ''
             """, (user.id,))
+            
+            # Additionally get users who have claimed faces (they may not have profile_image set correctly)
+            claimed_cursor = conn_users.cursor()
+            claimed_cursor.execute("""
+                SELECT u.id, u.username, f.filename as profile_image, u.face_encoding, u.current_location_city, u.current_location_state
+                FROM users u
+                JOIN faces f ON f.claimed_by_user_id = u.id
+                WHERE u.id != ? AND u.face_encoding IS NOT NULL
+            """, (user.id,))
+            
+            # Combine both result sets
             other_users = cursor.fetchall()
+            claimed_users = claimed_cursor.fetchall()
+            
+            # Add claimed users to the results
+            if claimed_users:
+                other_users = list(other_users) + list(claimed_users)
+                current_app.logger.debug(f"[SEARCH] Found {len(other_users)} total users, including {len(claimed_users)} with claimed faces")
             for other_user_row in other_users:
                 other_user_id, other_username, other_profile_image, other_encoding_blob, other_city, other_state = other_user_row
                 if other_encoding_blob:
@@ -198,28 +217,49 @@ def api_search():
                         similarity_score = calculate_similarity(distance) # Returns 0-100 percentage
                         
                         # Construct a proper image URL based on the profile_image path
+                        # Normalize the profile image path to ensure we're using the correct one from faces.db
                         if other_profile_image.startswith('userprofile_'):
                             image_url = f"/static/faces/{other_profile_image}"
                         elif other_profile_image.startswith('/static/'):
                             image_url = other_profile_image
-                        elif other_profile_image.startswith('static/'):
-                            image_url = f"/{other_profile_image}"
                         else:
-                            # Try multiple possible locations
-                            potential_paths = [
-                                f"/static/profile_pics/{other_profile_image}",
-                                f"/static/faces/{other_profile_image}",
-                                f"/static/{other_profile_image}"
-                            ]
-                            
-                            # Check which one exists
-                            image_url = potential_paths[0]  # Default
-                            for path in potential_paths:
-                                full_path = os.path.join(current_app.root_path, 'static', path.replace('/static/', ''))
-                                if os.path.exists(full_path):
-                                    image_url = path
-                                    break
-                        
+                            # Check if the file exists in profile_pics directory
+                            profile_pic_path = os.path.join(current_app.root_path, 'static', 'profile_pics', other_profile_image)
+                            if os.path.exists(profile_pic_path):
+                                image_url = f"/static/profile_pics/{other_profile_image}"
+                            else:
+                                # Try faces directory as fallback
+                                faces_path = os.path.join(current_app.root_path, 'static', 'faces', other_profile_image)
+                                if os.path.exists(faces_path):
+                                    image_url = f"/static/faces/{other_profile_image}"
+                                else:
+                                    # Check specifically in faces.db before falling back to default
+                                    # Check if the user has a userprofile_ image in the faces table
+                                    try:
+                                        face_cursor = conn_users.cursor()
+                                        face_cursor.execute(
+                                            "SELECT filename FROM faces WHERE claimed_by_user_id = ?",
+                                            (other_user_id,)
+                                        )
+                                        face_record = face_cursor.fetchone()
+                                        if face_record and face_record['filename']:
+                                            # Use the filename from faces table
+                                            image_url = f"/static/faces/{face_record['filename']}"
+                                            current_app.logger.debug(f"[SEARCH] Found user image in faces table: {image_url}")
+                                        else:
+                                            # Last resort: normalized path from the database without defaulting
+                                            image_url = normalize_profile_image_path(other_profile_image)
+                                    except Exception as e:
+                                        current_app.logger.error(f"[SEARCH] Error checking faces table: {e}")
+                                        # Last resort: normalized path from the database
+                                        image_url = normalize_profile_image_path(other_profile_image)
+
+                        # Calculate the location string for display
+                        location_display = ''
+                        if other_city and other_state:
+                            location_display = f"{other_city}, {other_state}"
+                        elif other_state:
+                            location_display = other_state
                         # Don't filter based on similarity yet - include all and sort later
                         # These are ALWAYS registered users since they come from the users table
                         registered_user_results_formatted.append({
@@ -229,14 +269,14 @@ def api_search():
                             "safe_image_path": image_url,  # Add this for consistency with FAISS results
                             "decade": "",
                             "state": other_state or "",
-                            "similarity": float(similarity_score) / 100,  # Convert to 0-1 scale for consistent frontend display
+                            "similarity": float(similarity_score),  # Keep as 0-100 percentage
                             "is_registered": True,  # Explicitly mark as registered
                             "is_historical": False,
                             "location": f"{other_city}, {other_state}" if other_city and other_state else (other_city or other_state or ""),
                             "registered_user_id": other_user_id,
                             "data_source": "users_table"  # Track data source
                         })
-                        current_app.logger.debug(f"[SEARCH] Registered user match found: {other_username} with similarity {similarity_score}")
+                        current_app.logger.debug(f"[SEARCH] Registered user match found: {other_username} with similarity {similarity_score} and image {image_url}")
                     except Exception as e_encoding:
                         current_app.logger.error(f"[SEARCH] Error processing encoding for user {other_user_id}: {str(e_encoding)}")
                         continue
@@ -246,13 +286,8 @@ def api_search():
             if conn_users: conn_users.close()
 
         # 3. Combine and Deduplicate
-        # Add debug output for original results before combining
-        current_app.logger.debug(f"FAISS results count: {len(faiss_results_formatted)}, Registered users count: {len(registered_user_results_formatted)}")
-        for i, reg_user in enumerate(registered_user_results_formatted):
-            current_app.logger.debug(f"Registered user {i} - is_registered: {reg_user.get('is_registered', False)}, username: {reg_user.get('username')}")
-            
-        # Combine results and set up deduplication
         all_results_combined = faiss_results_formatted + registered_user_results_formatted
+        current_app.logger.info(f"[SEARCH] Combined results before deduplication: {len(all_results_combined)}")
         final_results_map = {}
         
         for item in all_results_combined:
@@ -278,11 +313,11 @@ def api_search():
                     item['is_registered'] = is_registered_user
                     final_results_map[key] = item
         
-        final_results_list = sorted(list(final_results_map.values()), key=lambda x: x['similarity'], reverse=True)
-
+        final_results_list = list(final_results_map.values())
+        current_app.logger.info(f"[SEARCH] Results after deduplication: {len(final_results_list)}")
         # Limit to top 50 overall results
         top_n_results = final_results_list[:50]
-        
+        current_app.logger.info(f"[SEARCH] Top N results to return: {len(top_n_results)}")
         # Thorough debugging to understand which results are registered users and why
         for i, result in enumerate(top_n_results):
             # Get all the fields that might indicate this is a registered user
@@ -342,12 +377,39 @@ def api_search():
             else:
                 current_app.logger.debug(f"Confirmed: Result {i+1} is correctly marked as unregistered")
         
-        # Log the final results
+        # Log the final results and send notifications to registered users
+        from models.notification import Notification
+        
         for i, result in enumerate(top_n_results):
             # Convert to string representation for certain fields to ensure they're properly serialized
             if 'is_registered' in result:
                 # Ensure is_registered is explicitly a boolean for JSON serialization
                 result['is_registered'] = bool(result['is_registered'])
+            
+            # Send notification to registered users when they appear in search results
+            try:
+                # Get the user ID of the registered user in the search results
+                target_user_id = None
+                if result.get('is_registered'):
+                    if result.get('registered_user_id'):
+                        target_user_id = result.get('registered_user_id')
+                    elif result.get('claimed_by_user_id'):
+                        target_user_id = result.get('claimed_by_user_id')
+                
+                # Only send notification if this is a registered user
+                if target_user_id and target_user_id != user_id:
+                    # Create a notification for the user who appeared in search results
+                    Notification.create(
+                        user_id=target_user_id,
+                        type=Notification.TYPE_SEARCH_APPEARANCE,
+                        content=f"You appeared in someone's search results!",
+                        entity_id=str(user_id),  # The searcher's user ID
+                        entity_type="user",
+                        sender_id=user_id  # The searcher's user ID
+                    )
+                    current_app.logger.debug(f"[SEARCH] Sent search appearance notification to user {target_user_id}")
+            except Exception as e:
+                current_app.logger.error(f"[SEARCH] Error sending notification: {e}")
                 
             # Log in more detail including data_source
             current_app.logger.debug(
@@ -374,7 +436,7 @@ def api_search():
         }), 500
 
 
-@search_bp.route("/results")
+@search.route("/results")
 @login_required
 def search_results():
     user_image_url = None
@@ -427,17 +489,18 @@ def search_results():
     query = request.args.get("query", "")  # Retain any query params
     search_type = request.args.get("type", "faces")
 
-    return render_template(
-        "search.html",  # Or a specific results partial if that was the original design
-        results=results,
-        show_results=True,
-        user_image_url=user_image_url,
-        error_message=error_message,
-        states=states,
-        decades=decades,
-        query=query,
-        search_type=search_type,
-    )
+    # Return JSON for React frontend
+    # Remove any default image assignment for face matching; let frontend handle missing images
+    return jsonify({
+        "results": results,
+        "show_results": True,
+        "user_image_url": user_image_url,
+        "error_message": error_message,
+        "states": states,
+        "decades": decades,
+        "query": query,
+        "search_type": search_type
+    })
 
 
 def search_faces(query, args):
@@ -488,54 +551,49 @@ def search_users(query, args):
 
 def search_claimed_profiles(query, args):
     """Search for claimed profiles matching criteria."""
-    conn = get_db_connection(app=None)
-    if not conn:
-        return []
-
     try:
-        cursor = conn.cursor()
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
 
-        # Use LIKE for partial text matching
-        search_query = f"%{query}%"
+            # Use LIKE for partial text matching
+            search_query = f"%{query}%"
 
-        cursor.execute(
-            """
-            SELECT cp.*, u.username as username
-            FROM claimed_profiles cp
-            JOIN users u ON cp.user_id = u.id
-            WHERE cp.relationship LIKE ?
-            OR cp.caption LIKE ?
-            OR u.username LIKE ?
-            ORDER BY cp.claimed_at DESC
-            LIMIT 30
-        """,
-            (search_query, search_query, search_query),
-        )
+            cursor.execute(
+                """
+                SELECT cp.*, u.username as username, f.filename as face_filename
+                FROM claimed_profiles cp
+                JOIN users u ON cp.user_id = u.id
+                JOIN faces f ON cp.face_id = f.id
+                WHERE cp.relationship LIKE ?
+                OR cp.caption LIKE ?
+                OR u.username LIKE ?
+                ORDER BY cp.claimed_at DESC
+                LIMIT 30
+            """,
+                (search_query, search_query, search_query),
+            )
 
-        claimed_profiles = []
-        for profile_data in cursor.fetchall():
-            claimed_profiles.append(dict(profile_data))
+            claimed_profiles = []
+            for profile_data in cursor.fetchall():
+                profile_dict = dict(profile_data)
+                # Add face details to each claimed profile
+                face = Face.get_by_id(profile_dict["face_id"])
+                if face:
+                    profile_dict["face"] = {
+                        "yearbook_year": face.yearbook_year,
+                        "school_name": face.school_name,
+                        "page_number": face.page_number,
+                    }
+                claimed_profiles.append(profile_dict)
 
-        # Add face details to each claimed profile
-        for profile in claimed_profiles:
-            face = Face.get_by_filename(profile["face_filename"])
-            if face:
-                profile["face"] = {
-                    "yearbook_year": face.yearbook_year,
-                    "school_name": face.school_name,
-                    "page_number": face.page_number,
-                }
-
-        return claimed_profiles
+            return claimed_profiles
 
     except Exception as e:
         current_app.logger.error(f"Error searching claimed profiles: {e}")
         return []
-    finally:
-        conn.close()
 
 
-@search_bp.route("/discover")
+@search.route("/discover")
 @login_required
 def discover():
     """Discover interesting faces and users."""
@@ -629,34 +687,52 @@ def get_popular_faces(limit=10):
 
 def get_recent_claimed_profiles(limit=8):
     """Get recently claimed profiles."""
-    claimed_profiles = ClaimedProfile.get_recent(limit)
-
-    profiles_with_details = []
-    for profile in claimed_profiles:
-        user = User.get_by_id(profile.user_id)
-        face = Face.get_by_filename(profile.face_filename)
-
-        if user and face:
-            profiles_with_details.append(
-                {
-                    "id": profile.id,
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "profile_image": user.profile_image,
-                    },
-                    "face": {
-                        "filename": face.filename,
-                        "yearbook_year": face.yearbook_year,
-                        "school_name": face.school_name,
-                    },
-                    "relationship": profile.relationship,
-                    "caption": profile.caption,
-                    "claimed_at": profile.claimed_at,
-                }
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT cp.*, u.username, f.filename as face_filename
+                FROM claimed_profiles cp
+                JOIN users u ON cp.user_id = u.id
+                JOIN faces f ON cp.face_id = f.id
+                ORDER BY cp.claimed_at DESC
+                LIMIT ?
+                """,
+                (limit,)
             )
+            profiles = cursor.fetchall()
 
-    return profiles_with_details
+            profiles_with_details = []
+            for profile in profiles:
+                profile_dict = dict(profile)
+                user = User.get_by_id(profile_dict["user_id"])
+                face = Face.get_by_id(profile_dict["face_id"])
+
+                if user and face:
+                    profiles_with_details.append(
+                        {
+                            "id": profile_dict["id"],
+                            "user": {
+                                "id": user.id,
+                                "username": user.username,
+                                "profile_image": user.profile_image,
+                            },
+                            "face": {
+                                "filename": face.filename,
+                                "yearbook_year": face.yearbook_year,
+                                "school_name": face.school_name,
+                            },
+                            "relationship": profile_dict["relationship"],
+                            "caption": profile_dict["caption"],
+                            "claimed_at": profile_dict["claimed_at"],
+                        }
+                    )
+
+            return profiles_with_details
+    except Exception as e:
+        current_app.logger.error(f"Error getting recent claimed profiles: {e}")
+        return []
 
 
 def get_diverse_faces(limit=15):
@@ -698,7 +774,7 @@ def get_diverse_faces(limit=15):
     return face_dicts[:limit]
 
 
-@search_bp.route("/search", methods=["GET", "POST"])
+@search.route("/search", methods=["GET", "POST"])
 @login_required
 def search_page_direct():
     """Direct access route for /search for the React frontend."""
@@ -710,7 +786,7 @@ def search_page_direct():
         "results": []
     })
 
-@search_bp.route("/api/search/autocomplete", methods=["GET"])
+@search.route("/api/search/autocomplete", methods=["GET"])
 def autocomplete():
     """API endpoint for search autocomplete suggestions."""
     query = request.args.get("q", "")
@@ -821,7 +897,7 @@ def get_user_autocomplete_suggestions(query):
         conn.close()
 
 
-@search_bp.route("/api/face/<int:face_id>/like", methods=["POST"])
+@search.route("/api/face/<int:face_id>/like", methods=["POST"])
 @login_required
 def like_face(face_id):
     """Like or unlike a face/match from search results."""
@@ -847,7 +923,7 @@ def like_face(face_id):
     return jsonify({"success": True, "liked": liked, "like_count": like_count})
 
 # === Search Calibration Route ===
-@search_bp.route('/calibrate-search', methods=['POST'])
+@search.route('/calibrate-search', methods=['POST'])
 @login_required
 # Assuming limiter is accessible within the blueprint context or passed/imported
 # If limiter is a global app instance, you might need to access it via current_app
@@ -858,7 +934,7 @@ def calibrate_search():
     return redirect(url_for('search.generate_calibration_progress'))
 
 # === Search Calibration SSE Endpoint ===
-@search_bp.route('/calibrate-search/progress')
+@search.route('/calibrate-search/progress')
 @login_required
 def generate_calibration_progress():
     """Generates server-sent events (SSE) for search calibration progress."""
@@ -927,9 +1003,9 @@ def _generate_calibration_progress():
 # Need imports for os, time, traceback, flask, flask_login, utils.db.database, utils.face.recognition
 # Most should be available in routes/search.py already
 
-@search_bp.route('/api/search', methods=['GET'])
+@search.route('/api/search/legacy', methods=['GET'])
 @login_required
-def search():
+def search_legacy():
     try:
         # Get current user's data for comparison
         user_data = {

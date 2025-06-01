@@ -1,24 +1,30 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import styles from './matchpostcontainer.module.css';
 
-const styles = {
-  Card: {
-    width: '100%',
-    maxWidth: '600px',
-    backgroundColor: '#ffffff',
-    borderRadius: '6px',
-    border: '3px solid #030303',
-    boxSizing: 'border-box',
-    boxShadow: '0px 2px 26px rgba(0,0,0,0.3)',
-    margin: '0 16px',
-  },
-};
+const MatchPostContainerContent = ({ children, className, onError }) => {
+  const handleError = useCallback((error) => {
+    console.error('Error in MatchPostContainer:', error);
+    if (onError) {
+      onError(error);
+    }
+  }, [onError]);
 
-const Card = (props) => {
   return (
-    <div style={styles.Card}>
-      {props.children}
+    <div 
+      className={`${styles.container} ${className || ''}`}
+      onError={handleError}
+    >
+      {children}
     </div>
   );
 };
 
-export default Card;
+// Wrap the component with ErrorBoundary
+const MatchPostContainer = (props) => (
+  <ErrorBoundary>
+    <MatchPostContainerContent {...props} />
+  </ErrorBoundary>
+);
+
+export default MatchPostContainer;

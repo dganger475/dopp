@@ -30,7 +30,7 @@ from models.social import Post, Like, Comment
 from models.user import User
 from routes.auth import login_required
 from models.user_match import UserMatch # Needed for share_match
-from models.notification import Notification # Needed for share_match
+from models.social.notification import Notification # Needed for share_match
 
 feed = Blueprint('feed', __name__)
 
@@ -55,19 +55,51 @@ def share_match():
     # Optional: Check if the match belongs to the user
     # Create a post referencing this match
     # Privacy: Do NOT include the filename in the post content
-    content = "I found my historical doppelganger!"
+    # Get similarity percentage if available
+    from models.face import Face
+    face = Face.get_by_filename(match_filename)
+    similarity = None
+    if face:
+        # Get the similarity from the face record if available
+        similarity = face.similarity if hasattr(face, 'similarity') else None
+    
+    # Create a clean content string without the filename
+    if similarity:
+        content = f"I found my historical doppelganger with {int(float(similarity) * 100)}% similarity!"
+    else:
+        content = "I found my historical doppelganger!"
+        
+    # Store a reference to the filename but don't include it in the content
+    # This way we can still display the image without exposing the filename
     post = Post.create(
-        user_id=user_id, content=content, is_match_post=1, face_filename=match_filename
+        user_id=user_id, 
+        content=content, 
+        is_match_post=1, 
+        face_filename=match_filename  # Still needed for image display
     )
     # Notify original match owner if not current user
     match = UserMatch.get_by_user_and_filename(user_id, match_filename)
     if match and match.user_id != user_id:
         Notification.create(
             user_id=match.user_id,
-            type=Notification.TYPE_MATCH_CLAIMED if hasattr(Notification, 'TYPE_MATCH_CLAIMED') else 'match_claimed',
+            type=Notification.TYPE_MATCH_SHARED_TO_FEED,
             content="Your match card was shared to the feed!",
-            entity_id=match.id,
-            entity_type="match",
+            entity_id=str(post.id),
+            entity_type="post",
+            sender_id=user_id
+        )
+    
+    # Check if this face is claimed by another user
+    from models.face import Face
+    face = Face.get_by_filename(match_filename)
+    if face and face.claimed_by_user_id and face.claimed_by_user_id != user_id:
+        # Notify the user who claimed this face
+        Notification.create(
+            user_id=face.claimed_by_user_id,
+            type=Notification.TYPE_MATCH_SHARED_TO_FEED,
+            content="Someone shared a match with your face to the feed!",
+            entity_id=str(post.id),
+            entity_type="post",
             sender_id=user_id
         )
     if post:
@@ -82,38 +114,74 @@ def share_match():
             )
         )
 
+from extensions import limiter
+
 @feed.route("/", strict_slashes=False)
+@limiter.limit("200 per minute")
 @login_required
 def feed_page():
-    """Display the social feed."""
+    """Display the social feed. Always returns JSON for the React frontend."""
     user_id = session.get("user_id")
+    current_app.logger.info(f"Fetching feed for user {user_id}")
+    current_app.logger.info(f"Database URI: {current_app.config['SQLALCHEMY_DATABASE_URI']}")
 
-    # Create a test post if no posts exist
-    posts = Post.get_feed()
-    if not posts:
-        test_post = Post.create(
-            user_id=user_id,
-            content="Welcome to your social feed! This is a test post.",
-            is_match_post=0
-        )
-        if test_post:
-            posts = [test_post]
+    try:
+        posts = Post.get_feed()
+        current_app.logger.info(f"Retrieved {len(posts) if posts else 0} posts from database")
+        
+        if not posts:
+            current_app.logger.info("No posts found, creating test post")
+            test_post = Post.create(
+                user_id=user_id,
+                content="Welcome to your social feed! This is a test post."
+            )
+            if test_post:
+                posts = [test_post]
+                current_app.logger.info("Test post created successfully")
+            else:
+                current_app.logger.error("Failed to create test post")
 
-    # Ensure posts are dictionaries with user/profile info
-    posts = [post.to_dict(user_id=user_id) for post in posts]
+        posts = [post.to_dict(user_id=user_id) for post in posts]
+        current_app.logger.info(f"Returning {len(posts)} posts to frontend")
+        current_app.logger.debug(f"Posts data: {posts}")
 
-    return jsonify({
-        "posts": posts,
-        "success": True
-    })
+        return jsonify({
+            "posts": posts,
+            "success": True
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error in feed_page: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": "Failed to fetch feed",
+            "message": str(e)
+        }), 500
 
 @feed.route("/create_post", methods=["POST"])
 @login_required
 def create_post():
     """Create a new post."""
     user_id = session.get("user_id")
-    content = request.form.get("content")
-    face_filename = request.form.get("face_filename")
+    
+    # Handle both JSON and form data
+    if request.is_json:
+        data = request.get_json()
+        content = data.get("content")
+        face_filename = data.get("face_filename")
+        # Support for match posts from comparison page
+        image_url = data.get("image_url")
+        if image_url and not face_filename:
+            # Extract filename from image_url if provided
+            if "/static/faces/" in image_url:
+                face_filename = image_url.split("/static/faces/")[-1]
+            elif "/static/extracted_faces/" in image_url:
+                face_filename = image_url.split("/static/extracted_faces/")[-1]
+            else:
+                face_filename = image_url  # Use as is if no pattern matches
+    else:
+        content = request.form.get("content")
+        face_filename = request.form.get("face_filename")
 
     if not content and not face_filename:
         return jsonify({
@@ -151,20 +219,33 @@ def create_post():
 def like_post(post_id):
     """Like or unlike a post."""
     user_id = session.get("user_id")
+    current_app.logger.info(f"Like request for post_id={post_id}, user_id={user_id}")
     
     try:
+        # Verify post exists
         post = Post.get_by_id(post_id)
         if not post:
+            current_app.logger.warning(f"Post not found: {post_id}")
             return jsonify({"success": False, "error": "Post not found"}), 404
 
         # Check if user has already liked the post
+        current_app.logger.info(f"Checking if user {user_id} has already liked post {post_id}")
         existing_like = Like.get_by_user_and_post(user_id, post_id)
+        
+        likes_count = len(Like.get_by_post(post_id))
+        is_liked = False
         
         if existing_like:
             # Unlike the post
-            existing_like.delete()
+            current_app.logger.info(f"User {user_id} already liked post {post_id}, removing like")
+            # Use class method directly for more reliability
+            Like.delete(post_id, user_id)
+            likes_count -= 1
+            is_liked = False
+            
             # Notify the post owner about the unlike (optional)
             if post.user_id != user_id:
+                current_app.logger.info(f"Removing notification for post owner {post.user_id}")
                 Notification.delete_if_exists(
                     user_id=post.user_id,
                     type='post_like',
@@ -173,22 +254,39 @@ def like_post(post_id):
                 )
         else:
             # Like the post
-            Like.create(user_id=user_id, post_id=post_id)
-            # Notify the post owner about the like
-            if post.user_id != user_id:
-                Notification.create(
-                    user_id=post.user_id,
-                    type='post_like',
-                    content=f"liked your post",
-                    entity_id=post_id,
-                    entity_type="post",
-                    sender_id=user_id
-                )
+            current_app.logger.info(f"User {user_id} has not liked post {post_id}, adding like")
+            new_like = Like.create(post_id=post_id, user_id=user_id)
+            if new_like:
+                likes_count += 1
+                is_liked = True
+                current_app.logger.info(f"Like created successfully for post {post_id}")
+                
+                # Notify the post owner about the like
+                if post.user_id != user_id:
+                    current_app.logger.info(f"Creating notification for post owner {post.user_id}")
+                    Notification.create(
+                        user_id=post.user_id,
+                        type=Notification.TYPE_POST_LIKE,
+                        content=f"Someone liked your post",
+                        entity_id=post_id,
+                        entity_type="post",
+                        sender_id=user_id
+                    )
+            else:
+                current_app.logger.error(f"Failed to create like for post {post_id}")
+                return jsonify({"success": False, "error": "Failed to create like"}), 500
 
-        return jsonify({"success": True})
+        # Return updated like information
+        return jsonify({
+            "success": True, 
+            "user_has_liked": is_liked,
+            "likes_count": likes_count
+        })
 
     except Exception as e:
+        import traceback
         current_app.logger.error(f"Error handling like for post {post_id}: {e}")
+        current_app.logger.error(traceback.format_exc())
         return jsonify({"success": False, "error": "Failed to process like"}), 500
 
 @feed.route("/comment/<int:post_id>", methods=["POST"])
@@ -219,8 +317,8 @@ def add_comment(post_id):
             # Notify the post owner about the comment
             Notification.create(
                 user_id=post.user_id,
-                type='post_comment',
-                content=f"commented on your post: {content[:50]}{'...' if len(content) > 50 else ''}",
+                type=Notification.TYPE_POST_COMMENT,
+                content=f"Someone commented on your post: {content[:50]}{'...' if len(content) > 50 else ''}",
                 entity_id=post_id,
                 entity_type="post",
                 sender_id=user_id

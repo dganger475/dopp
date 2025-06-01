@@ -13,7 +13,7 @@ const styles = {
 
 const Card = (props) => {
   return (
-    <div style={styles.Card}>
+    <div style={{...styles.Card, ...props.style}}>
       {props.children}
     </div>
   );

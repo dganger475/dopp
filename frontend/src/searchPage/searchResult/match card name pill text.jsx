@@ -15,7 +15,7 @@ const defaultProps = {
 
 const Text = (props) => {
   return (
-    <div style={styles.Text}>
+    <div style={{...styles.Text, ...props.style}}>
       {props.text ?? defaultProps.text}
     </div>
   );

@@ -1,0 +1,33 @@
+.instructions-page-reverse {
+  background: #fff;
+  color: #111;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+}
+.instructions-page-reverse h1 {
+  font-size: 2.2rem;
+  margin-bottom: 1.5rem;
+}
+.instructions-page-reverse ol {
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+  text-align: left;
+  max-width: 400px;
+}
+.instructions-btn {
+  background: #111;
+  color: #fff;
+  padding: 0.7rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.instructions-btn:hover {
+  background: #333;
+} 

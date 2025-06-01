@@ -22,8 +22,8 @@ DATABASE_PATH = 'faces.db'
 USERS_DATABASE_PATH = 'users.db'
 
 # Face matching settings
-FAISS_INDEX_PATH = 'faces.index' 
-FILENAMES_PICKLE_PATH = 'faces_filenames.pkl'
+FAISS_INDEX_PATH = r'C:\Users\1439\Documents\Dopp\data\index\faces.index'
+FILENAMES_PICKLE_PATH = r'C:\Users\1439\Documents\Dopp\data\index\faces_filenames.pkl'
 DEFAULT_MATCH_LIMIT = 20
 
 # Feature flags

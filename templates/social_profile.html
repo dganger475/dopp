@@ -58,7 +58,7 @@
 {% endblock %}
 {% block content %}
   <div class="profile-header">
-    <img class="profile-avatar" src="{{ user.profile_image_url or url_for('static', filename='default_profile.png') }}" alt="Profile">
+    <img class="profile-avatar" src="{{ get_profile_image_url(user.profile_image_url) }}" alt="Profile">
     <div class="profile-name">{{ user.display_name or user.username }}</div>
     <div class="profile-stats">
       <div class="profile-stat"><b>{{ user.matches_count or 0 }}</b><br>Matches</div>
@@ -96,7 +96,7 @@
   <div class="profile-content">
     <!-- Profile Info -->
     <div class="profile-avatar-container">
-      <img src="{{ user_image_url or '/static/default_profile.png' }}" 
+      <img src="{{ get_profile_image_url(user_image_url) }}" 
            alt="{{ user.full_name or user.username }}" 
            class="profile-avatar"> 
       {% if is_current_user %}
@@ -178,7 +178,7 @@
   <div class="post-creation-container" style="max-width: 768px; margin: 20px auto; padding: 0 16px;">
     <form action="{{ url_for('social.create_post') }}" method="POST" class="post-form" style="background-color: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px;">
       <div class="post-form-header" style="display: flex; align-items: center; margin-bottom: 16px;">
-        <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="{{ user.username }}" class="post-user-avatar" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover;"> 
+        <img src="{{ get_profile_image_url(user_image_url) }}" alt="{{ user.username }}" class="post-user-avatar" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 12px; object-fit: cover;"> 
         <h3 style="font-size: 16px; font-weight: 600; color: var(--text-dark); margin: 0;">Post to {{ user.first_name or user.username }}'s Timeline</h3>
       </div>
       <input type="hidden" name="target_user_id" value="{{ user.id }}">
@@ -412,7 +412,7 @@
                   const userProfileUrl = `/profile/${encodeURIComponent(comment.user.username)}`;
                   commentEl.innerHTML = `
                     <div class="comment-user">
-                      <img src="${comment.user.profile_image_url || '/static/images/default_profile.svg'}" alt="${comment.user.username}" class="comment-avatar" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; object-fit: cover;">
+                      <img src="${get_profile_image_url(comment.user.profile_image_url) || '/static/images/default_profile.svg'}" alt="${comment.user.username}" class="comment-avatar" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 8px; object-fit: cover;">
                       <a href="${userProfileUrl}" class="comment-username">${comment.user.full_name || comment.user.username}</a>
                     </div>
                     <div class="comment-content" style="margin-left: 40px; margin-bottom: 12px;">

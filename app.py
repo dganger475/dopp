@@ -10,271 +10,169 @@ import platform
 import logging
 import time
 from datetime import timedelta
-from flask import Flask, request, render_template, redirect, url_for, jsonify, send_from_directory
-from flask_login import LoginManager, current_user
-from flask_cors import CORS
+import os
+import platform
+import logging
+import time
+from datetime import timedelta
+import sqlite3
+
+# Load environment variables first
+from dotenv import load_dotenv
+load_dotenv()
+
+# Import Flask and extensions
+from flask import Flask, request, render_template, redirect, url_for, jsonify, send_from_directory, session, make_response
+# Using custom CORS middleware
+from utils.cors import setup_cors
 from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_session import Session
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_caching import Cache
-from dotenv import load_dotenv
+from flask_login import LoginManager, current_user, login_required
 from flask_migrate import Migrate
+from utils.db.database import get_users_db_connection
+from flask_compress import Compress
+from flask_sqlalchemy import SQLAlchemy
 
-from config import config as config_dict, Config
-from extensions import init_extensions, db, login_manager
-from config.cache import CacheConfig
-from utils.image_paths import get_image_path, normalize_profile_image_path
+# Import template helpers
 from template_helpers import init_template_helpers
+
+# Import config after environment variables are loaded
+from config import config as config_dict, Config
+
+# Import extensions (db will be initialized later)
+from extensions import cache, limiter, session, talisman, login_manager, moment, db, init_extensions
+
+# Import utility functions
 from utils.startup import run_startup_tasks
+from utils.image_paths import get_image_path, normalize_profile_image_path
+from utils.image_urls import get_face_image_url, get_profile_image_url
+from utils.db.storage import get_storage
+from utils.files.utils import generate_face_filename, is_anonymized_face_filename, parse_face_id_from_filename
+
+# Import models
 from models.user import User
 
-# Import blueprints
-from routes.main import main as main_blueprint
-from routes.auth import auth as auth_blueprint
-from routes.profile.view import profile_view
-from routes.profile.edit import edit_profile_bp
-from routes.profile.helpers import helpers as profile_helpers
-from routes.face import face as face_blueprint
-from routes.social import social as social_blueprint
-from routes.search import search_bp
+# Import blueprints after app is created to avoid circular imports
+# This function is replaced with the comprehensive setup_cors in utils.cors
 
-# Import blueprints
-main = main_blueprint
-auth = auth_blueprint
-profile = profile_view
-edit_profile = edit_profile_bp
-profile_helpers = profile_helpers
-face = face_blueprint
-social = social_blueprint
-search = search_bp
-
-def create_app(config_class=Config):
-    app = Flask(__name__)
-    config_name = os.environ.get('FLASK_ENV', 'development')
-    config = config_dict.get(config_name, config_dict['default'])
-    app.config.from_object(config)
-
-    # === BEGIN Cascade Debug: Force Config Paths ===
-    app.logger.info(f"[Cascade Debug] DB_PATH after from_object: {app.config.get('DB_PATH')}")
-    app.logger.info(f"[Cascade Debug] INDEX_PATH after from_object: {app.config.get('INDEX_PATH')}")
-    app.logger.info(f"[Cascade Debug] MAP_PATH after from_object: {app.config.get('MAP_PATH')}")
-
-    correct_db_path = r'C:\Users\dumpy\Documents\Dopp\faces.db'
-    correct_index_path = r'C:\Users\dumpy\Documents\Dopp\data\index\faces.index'
-    correct_map_path = r'C:\Users\dumpy\Documents\Dopp\data\index\faces_filenames.pkl'
-
-    app.config['DB_PATH'] = correct_db_path
-    app.config['INDEX_PATH'] = correct_index_path
-    app.config['MAP_PATH'] = correct_map_path
-
-    app.logger.info(f"[Cascade Debug] DB_PATH after EXPLICIT override: {app.config.get('DB_PATH')}")
-    app.logger.info(f"[Cascade Debug] INDEX_PATH after EXPLICIT override: {app.config.get('INDEX_PATH')}")
-    app.logger.info(f"[Cascade Debug] MAP_PATH after EXPLICIT override: {app.config.get('MAP_PATH')}")
-    # === END Cascade Debug: Force Config Paths ===
-
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
-
-    # Configure Content Security Policy
-    csp = {
-        'default-src': ['self', 'unsafe-inline'],
-        'style-src': ['self', 'unsafe-inline', 'unsafe-hashes', 'https://fonts.googleapis.com', 'http://localhost:5173'],
-        'script-src': ['self', 'unsafe-inline', 'unsafe-eval'],
-        'img-src': ['self', 'data:', 'https:', 'http:', 'http://localhost:5173'],
-        'font-src': ['self', 'https://fonts.gstatic.com']
+def register_blueprints(app):
+    """Register Flask blueprints with app."""
+    from routes.main import main
+    from routes.auth import auth
+    from routes.search import search
+    from routes.profile.view import profile_view
+    from routes.profile.edit import edit_profile
+    from routes.profile.update import profile_update
+    from routes.face import face
+    from routes.social import social
+    from routes.api import api
+    from routes.api_users import api_users
+    from routes.cors_proxy import cors_proxy
+    from routes.test import test
+    from routes.admin import admin
+    from routes.face_upload import face_upload
+    
+    # Register blueprints
+    app.register_blueprint(main, name='main')
+    app.register_blueprint(auth, url_prefix='/auth', name='auth')
+    app.register_blueprint(search, url_prefix='/search', name='search')
+    app.register_blueprint(profile_view, url_prefix='/profile', name='profile')
+    app.register_blueprint(edit_profile, url_prefix='/edit-profile', name='edit_profile')
+    app.register_blueprint(profile_update, url_prefix='/profile', name='profile_update')
+    app.register_blueprint(face, url_prefix='/face', name='face')
+    app.register_blueprint(social, url_prefix='/social', name='social')
+    app.register_blueprint(api, url_prefix='/api', name='api')
+    app.register_blueprint(api_users, url_prefix='/api', name='api_users')
+    app.register_blueprint(cors_proxy)
+    app.register_blueprint(test)
+    app.register_blueprint(admin, url_prefix='/admin', name='admin')
+    app.register_blueprint(face_upload)
+    
+    # Make blueprints available if needed
+    app.blueprints = {
+        'main': main,
+        'auth': auth,
+        'profile': profile_view,
+        'edit_profile': edit_profile,
+        'profile_update': profile_update,
+        'face': face,
+        'social': social,
+        'search': search,
+        'api': api,
+        'api_users': api_users,
+        'admin': admin
     }
+
+def create_app(config_class=None):
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    if config_class == 'testing':
+        from config import TestingConfig
+        app.config.from_object(TestingConfig)
+    else:
+        # your normal config loading
+        from config import Config
+        app.config.from_object(Config)
     
-    # Initialize Talisman with CSP
-    Talisman(app, content_security_policy=csp)
-
-    app = init_extensions(app)
-
-    # Jinja helpers
-    try:
-        init_template_helpers(app)
-    except Exception as e:
-        import sys
-        print(f"WARNING: Could not initialize template helpers: {e}", file=sys.stderr)
-
-    # Session config
+    # Configure session settings
     app.config['SESSION_TYPE'] = 'filesystem'
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
-    app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-please-change-in-production')
-
-    # Cache configuration
-    app.config['CACHE_TYPE'] = 'simple'  # Use simple cache for development
-    app.config['CACHE_DEFAULT_TIMEOUT'] = 300
-    cache = Cache(app)
-    app.cache = cache  # Make cache available through current_app
-
-    # Utility injection
-    @app.context_processor
-    def inject_utilities():
-        from flask_wtf.csrf import generate_csrf
-        return dict(
-            get_image_path=get_image_path,
-            normalize_profile_image_path=normalize_profile_image_path,
-            csrf_token=generate_csrf
-        )
-
-    # Logging
-    LOG_TO_FILE = os.environ.get('DOPPLE_LOG_TO_FILE', '0') == '1'
-    IS_WINDOWS = platform.system().lower().startswith('win')
-    logger = logging.getLogger(__name__)
-    LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
-    os.makedirs(LOGS_DIR, exist_ok=True)
-    handlers = [logging.StreamHandler()]
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=handlers
-    )
-    if not LOG_TO_FILE or IS_WINDOWS:
-        logger.warning('File logging is disabled')
-
-    # Login
-    login_manager = LoginManager(app)
-    login_manager.login_view = 'auth.login'
+    app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
+    app.config['SESSION_PERMANENT'] = True
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+    app.config['SESSION_COOKIE_SECURE'] = False  # For local development, set to True in production
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # For local dev, use 'Lax'. Use 'None' for cross-site cookies in production with HTTPS
     
-    csrf = CSRFProtect(app)
+    # Initialize extensions first
+    from extensions import init_extensions
+    init_extensions(app)
     
-    limiter = Limiter(
-        get_remote_address,
-        app=app,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri=app.config.get('RATELIMIT_STORAGE_URL', 'memory://')
-    )
-
+    # Setup CORS before registering blueprints
+    app = setup_cors(app)
+    
+    # Setup CORS for local development
+    from flask_cors import CORS
+    CORS(app, supports_credentials=True, origins=["http://localhost:5173"])  # Allow frontend dev server
+    
+    # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
-        return User.get_by_id(int(user_id))
-
-    # Register blueprints
-    app.register_blueprint(main_blueprint)
-    app.register_blueprint(auth_blueprint, url_prefix='/auth')
-    app.register_blueprint(profile_view, url_prefix='/profile')
-    app.register_blueprint(face_blueprint, url_prefix='/face')
-    app.register_blueprint(social_blueprint, url_prefix='/social')
-    app.register_blueprint(search_bp)
-
-    # Talisman security headers
-    # Relax CSP for development to allow inline styles for React
-    if app.config.get('ENV') == 'development' or app.config.get('DEBUG', False):
-        talisman = Talisman(app, content_security_policy={
-            'default-src': "'self'",
-            'img-src': "'self' data: blob:",
-            'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com http://localhost:5173 https://cdnjs.cloudflare.com",
-            'script-src': "'self' 'unsafe-inline' https://cdnjs.cloudflare.com 'nonce-{}'".format(os.urandom(16).hex()),
-            'font-src': "'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-            'connect-src': "'self' http://localhost:5173",
-            'media-src': "'self'",
-            'object-src': "'none'",
-            'frame-src': "'self'",
-            'base-uri': "'self'",
-            # ... other directives ...
-        })
-    else:
-        talisman = Talisman(app, content_security_policy={
-            'default-src': "'self'",
-            'img-src': "'self' data: blob:",
-            'style-src': "'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-            'script-src': "'self' https://cdnjs.cloudflare.com 'nonce-{}'".format(os.urandom(16).hex()),
-            'font-src': "'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-            'connect-src': "'self'",
-            'media-src': "'self'",
-            'object-src': "'none'",
-            'frame-src': "'self'",
-            'base-uri': "'self'",
-            'form-action': "'self'",
-            'frame-ancestors': "'self'"
-        }, force_https=False)
-
-    # CORS
-    trusted_origins = os.environ.get('TRUSTED_ORIGINS', '').split(',')
-    if config_name == 'production' and '*' in trusted_origins:
-        app.logger.error('Wildcard CORS origin not allowed in production')
-        trusted_origins = [o for o in trusted_origins if o != '*']
-
-    CORS(app,
-         supports_credentials=True,
-         resources={r"/*": {"origins": trusted_origins}},
-         expose_headers=['Content-Range', 'X-Total-Count'])
-
-    # Errors
-    @app.errorhandler(CSRFError)
-    def handle_csrf_error(e):
-        app.logger.warning('CSRF failed', extra={'error': str(e)})
-        return render_template('error.html', error="CSRF validation failed."), 400
-
-    @app.errorhandler(429)
-    def handle_ratelimit_error(e):
-        app.logger.warning('Rate limit exceeded', extra={'error': str(e)})
-        return render_template('error.html', error="Too many requests."), 429
-
-    @app.errorhandler(500)
-    def handle_internal_error(e):
-        app.logger.error('500 error', extra={'error': str(e)})
         try:
-            from models.sqlalchemy_models import db
-            db.session.rollback()
-        except Exception as db_exc:
-            app.logger.error(f'DB rollback failed: {db_exc}')
-        return render_template('500.html'), 500
-
-    @app.errorhandler(404)
-    def handle_not_found(e):
-        app.logger.info('404 not found', extra={'path': request.path})
-        return render_template('404.html'), 404
-
-    @app.route('/health')
-    def health():
-        try:
-            from models.sqlalchemy_models import db
-            db.session.execute('SELECT 1')
-            cache = app.extensions.get('cache_instance')
-            cache.set('health_check', 'ok')
-            cache.get('health_check')
-            return {'status': 'ok', 'database': 'ok', 'cache': 'ok', 'version': app.config['VERSION']}, 200
+            user = User.query.get(int(user_id))
+            if user:
+                # Ensure session is set
+                session['user_id'] = user.id
+            return user
         except Exception as e:
-            app.logger.error(f'Health check failed: {str(e)}')
-            return {'status': 'error', 'message': str(e)}, 500
-
-    @app.before_request
-    def start_timer():
-        request._start_time = time.perf_counter()
-
-    @app.after_request
-    def log_request_time(response):
-        if hasattr(request, '_start_time'):
-            elapsed = time.perf_counter() - request._start_time
-            app.logger.info(f"Request to {request.path} took {elapsed:.3f} sec")
-        return response
-
-    @app.route('/')
-    def index():
-        if current_user.is_authenticated:
-            return redirect(url_for('search.search_page'))
-        return redirect(url_for('auth.login'))
-
-    # Register blueprints with unique names
-    app.register_blueprint(main, name='main_bp')
-    app.register_blueprint(auth, name='auth_bp')
-    app.register_blueprint(profile, name='profile_bp')
-    app.register_blueprint(edit_profile, name='edit_profile_bp')
-    app.register_blueprint(profile_helpers, name='profile_helpers_bp')
-    app.register_blueprint(face, name='face_bp')
-    app.register_blueprint(social, name='social_bp')
-    app.register_blueprint(search, name='search_bp')
-
-    # Run startup tasks
+            app.logger.error(f"Error loading user: {str(e)}")
+            return None
+    
+    # Register blueprints
+    register_blueprints(app)
+    
+    # Initialize database tables
     with app.app_context():
-        run_startup_tasks(app)
-
+        from extensions import db
+        db.create_all()
+    
+    # Add template context processors
+    @app.context_processor
+    def utility_processor():
+        return {
+            'get_face_image_url': get_face_image_url,
+            'get_profile_image_url': get_profile_image_url,
+            'generate_face_filename': generate_face_filename,
+            'is_anonymized_face_filename': is_anonymized_face_filename,
+            'parse_face_id_from_filename': parse_face_id_from_filename
+        }
+    
     return app
 
-app = create_app()
-
+# Only create the app if this file is run directly
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)
+    app = create_app()
+    app.run(host="0.0.0.0", port=5000, debug=True)

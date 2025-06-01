@@ -36,46 +36,46 @@
 {% block content %}
   <div class="feed-container">
     <!-- Post box -->
-    <div class="post-box">
+    <div class="post-box" style="display: flex; align-items: center; margin-bottom: 16px; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
       <div class="avatar avatar-lg">
-        <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        <img src="{{ get_profile_image_url(user_image_url) }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
       </div>
-      <input type="text" id="newPostContent" placeholder="What’s on your mind?">
+      <input type="text" id="newPostContent" placeholder="What's on your mind?">
       <button id="createPostBtn">Post</button>
     </div>
     {% if posts|length == 0 %}
       <div style="text-align:center; color:#b9b9b9; margin-top:40px; font-size:18px;">No posts yet. Be the first to share something!</div>
     {% endif %}
     {% for post in posts %}
-    <div class="post-card">
-      <div class="post-header">
+    <div class="post-card" style="margin-bottom: 16px; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <div class="post-header" style="display: flex; align-items: center; margin-bottom: 8px;">
         <div class="avatar">
-          <img src="{{ post.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          <img src="{{ get_profile_image_url(post.profile_image_url) }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">
         </div>
-        <div class="user-pill" style="background: var(--primary); color: #fff; width: 128px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 0 0 0; font-weight: 700; font-size: 15px; white-space: nowrap;">{{ post.username }}</div>
-        <div class="post-user-meta">
+        <div class="user-pill" style="background: var(--primary); color: #fff; width: 100px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 6px; margin: 0 0 0 0; font-weight: 700; font-size: 13px; white-space: nowrap;">{{ post.username }}</div>
+        <div class="post-user-meta" style="margin-left: 8px;">
           <div class="username">{{ post.username }}</div>
           <div class="post-meta" data-date="{{ post.created_at }}"></div>
         </div>
       </div>
-      <div class="post-content">{{ post.content }}</div>
+      <div class="post-content" style="margin: 8px 0; font-size: 14px;">{{ post.content }}</div>
       {% if post.face_filename %}
-      <div class="match-comparison">
-        <div class="face">
-          <div class="avatar">
-            <img src="{{ post.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      <div class="match-comparison" style="display: flex; justify-content: space-between; margin: 8px 0;">
+        <div class="face" style="display: flex; flex-direction: column; align-items: center; width: 48%;">
+          <div class="avatar" style="width: 100px; height: 100px; border-radius: 4px; overflow: hidden;">
+            <img src="{{ get_profile_image_url(post.profile_image_url) }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">
           </div>
-          <div class="label" style="background: var(--primary); color: #fff; border-radius: 8px; padding: 2px 14px; margin-top: 6px; font-weight: 600; font-size: 14px; display: inline-block;">{{ post.username }}</div>
+          <div class="label" style="background: var(--primary); color: #fff; border-radius: 6px; padding: 2px 10px; margin-top: 4px; font-weight: 600; font-size: 12px; display: inline-block;">{{ post.username }}</div>
         </div>
-        <div class="face">
-          <img src="/static/extracted_faces/{{ post.face_filename }}" alt="Match">
-          <div class="label" style="background: var(--primary); color: #fff; border-radius: 8px; padding: 2px 14px; margin-top: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Match</div>
+        <div class="face" style="display: flex; flex-direction: column; align-items: center; width: 48%;">
+          <img src="{{ get_face_image_url(post.face_filename) }}" alt="Match" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
+          <div class="label" style="background: var(--primary); color: #fff; border-radius: 6px; padding: 2px 10px; margin-top: 4px; font-weight: 600; font-size: 12px; display: inline-block;">Match</div>
         </div>
       </div>
-      <div class="match-meta">
-        {% if post.similarity %}<div class="meta-item">Similarity: <b>{{ post.similarity }}%</b></div>{% endif %}
-        {% if post.state %}<div class="meta-item">State: {{ post.state }}</div>{% endif %}
-        {% if post.decade %}<div class="meta-item">Decade: {{ post.decade }}</div>{% endif %}
+      <div class="match-meta" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; font-size: 12px;">
+        {% if post.similarity %}<div class="meta-item" style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">Similarity: <b>{{ post.similarity }}%</b></div>{% endif %}
+        {% if post.state %}<div class="meta-item" style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">State: {{ post.state }}</div>{% endif %}
+        {% if post.decade %}<div class="meta-item" style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">Decade: {{ post.decade }}</div>{% endif %}
       </div>
       {% endif %}
       <div class="interaction-bar-container"><div class="stats-bar>
@@ -84,22 +84,22 @@
 </button>
 </div><div class="interaction-bar">
       </div></div></div>
-      <div class="comments-section" id="comments-{{ post.id }}">
+      <div class="comments-section" id="comments-{{ post.id }}" style="margin-top: 8px; font-size: 13px;">
         {% for comment in post.comments %}
-        <div class="comment">
-          <div class="avatar avatar-sm">
-            <img src="{{ comment.profile_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+        <div class="comment" style="display: flex; align-items: flex-start; margin-bottom: 6px;">
+          <div class="avatar" style="width: 40px; height: 40px; margin-right: 8px; border-radius: 4px; overflow: hidden;">
+            <img src="{{ get_profile_image_url(comment.profile_image_url) }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">
           </div>
           <div class="comment-content"><b>{{ comment.username }}</b> {{ comment.content }}</div>
         </div>
         {% endfor %}
       </div>
-      <div class="add-comment-bar">
-        <div class="avatar avatar-sm">
-          <img src="{{ user_image_url or '/static/default_profile.png' }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">
+      <div class="add-comment-bar" style="display: flex; align-items: center; margin-top: 8px;">
+        <div class="avatar avatar-sm" style="width: 24px; height: 24px; margin-right: 6px; border-radius: 4px; overflow: hidden;">
+          <img src="{{ get_profile_image_url(user_image_url) }}" alt="User avatar" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">
         </div>
-        <input type="text" class="add-comment-input" placeholder="Add a comment..." data-post-id="{{ post.id }}">
-        <button class="add-comment-btn">Send</button>
+        <input type="text" class="add-comment-input" placeholder="Add a comment..." data-post-id="{{ post.id }}" style="flex: 1; margin: 0 6px; padding: 4px 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 13px;">
+        <button class="add-comment-btn" style="background: var(--primary); color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 13px; cursor: pointer;">Send</button>
       </div>
     </div>
     {% endfor %}
@@ -210,4 +210,4 @@
     });
   </script>
   <script src="{{ url_for('static', filename='js/matches_fix.js') }}"></script>
-{% endblock %
+{% endblock %}

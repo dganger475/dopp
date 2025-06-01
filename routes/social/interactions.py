@@ -10,9 +10,8 @@ This module contains routes related to post interactions, including:
 import logging
 from flask import Blueprint, current_app, jsonify, request, redirect, url_for, flash, session
 from flask_login import current_user, login_required
-from models.social import Like, Comment, Post, ClaimedProfile
+from models.social import Like, Comment, Post, ClaimedProfile, Notification
 from models.user import User
-from models.notification import Notification
 
 interactions = Blueprint('interactions', __name__)
 

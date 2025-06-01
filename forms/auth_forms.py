@@ -7,6 +7,7 @@ This module contains the forms used for user authentication.
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, Email, Length, EqualTo
+from flask_wtf.file import FileField, FileAllowed
 
 class LoginForm(FlaskForm):
     """Form for user login."""
@@ -37,5 +38,8 @@ class RegisterForm(FlaskForm):
     password2 = PasswordField('Repeat Password', validators=[
         DataRequired(),
         EqualTo('password', message='Passwords must match')
+    ])
+    profile_photo = FileField('Profile Photo', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg'], 'Images only!')
     ])
     submit = SubmitField('Register') 

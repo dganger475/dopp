@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styles from './UniversalCard.module.css';
+import API_BASE_URL from '../config/api';
 
 const UniversalCard = ({
   image,
@@ -52,6 +53,13 @@ const UniversalCard = ({
     ...style
   };
 
+  // Construct the image URL
+  const imageUrl = image ? (
+    image.startsWith('http') ? image :
+    image.startsWith('/static') ? `${API_BASE_URL}${image}` :
+    `${API_BASE_URL}/static/${image}`
+  ) : null;
+
   return (
     <div className={cardClasses} style={defaultCardStyle}>
       {labelText && (
@@ -62,13 +70,24 @@ const UniversalCard = ({
       )}
       <div className={styles.imageContainer}>
         <div className={styles.imageBorder}>
-          <img
-            src={image || 'http://localhost:5000/static/images/default_profile.svg'}
-            alt={displayUsername || 'Face'}
-            className={`${styles.image} ${isLoading ? styles.loading : ''}`}
-            onLoad={handleImageLoad}
-            onError={() => setIsLoading(false)}
-          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={displayUsername || 'Face'}
+              className={`${styles.image} ${isLoading ? styles.loading : ''}`}
+              onLoad={handleImageLoad}
+              onError={(e) => {
+                console.error('Image failed to load:', imageUrl);
+                setIsLoading(false);
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+          ) : (
+            <div className={`${styles.image} ${styles.noImage}`}>
+              <span>No Image Available</span>
+            </div>
+          )}
         </div>
       </div>
       <div className={styles.info}>

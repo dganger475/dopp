@@ -1,0 +1,23 @@
+Filenames from 'faces' table (LIMIT 20) not found by find_image_path:
+2011_Journal : [Taunton High School yearbook]_page2_face1.jpg
+2011_Journal : [Taunton High School yearbook]_page3_face1.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face1.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face2.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face3.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face4.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face5.jpg
+2011_Journal : [Taunton High School yearbook]_page4_face6.jpg
+2011_Journal : [Taunton High School yearbook]_page5_face1.jpg
+2011_Journal : [Taunton High School yearbook]_page5_face2.jpg
+2011_Journal : [Taunton High School yearbook]_page5_face3.jpg
+2011_Journal : [Taunton High School yearbook]_page5_face4.jpg
+2011_Journal : [Taunton High School yearbook]_page5_face5.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face1.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face2.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face3.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face4.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face5.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face6.jpg
+2011_Journal : [Taunton High School yearbook]_page6_face7.jpg
+
+All sampled image filenames for registered users were found.

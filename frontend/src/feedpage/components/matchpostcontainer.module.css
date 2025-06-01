@@ -1,0 +1,54 @@
+.container {
+  width: 100%;
+  max-width: 600px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  border: 3px solid #030303;
+  box-sizing: border-box;
+  box-shadow: 0px 2px 26px rgba(0, 0, 0, 0.3);
+  margin: 0 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 4px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Error state styles */
+.container.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+/* Loading state styles */
+.container.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .container {
+    margin: 0 8px;
+    max-width: 100%;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.container {
+  animation: fadeIn 0.3s ease-out;
+} 

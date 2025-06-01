@@ -9,7 +9,7 @@ from flask import current_app
 from PIL import Image
 
 import numpy as np
-from utils.db.database import get_db_connection
+from utils.db.database import get_db_connection as get_db_connection_with_app
 
 # Default paths if not using app config
 DEFAULT_INDEX_PATH = "faces.index"
@@ -66,126 +66,79 @@ def rebuild_faiss_index(app=None):
     Returns:
         Boolean indicating success or failure
     """
-    # Make sure we're using the faces.db file
     logging.info("Rebuilding FAISS index from faces.db file and users table")
-    
-    conn = get_db_connection(app=app)
-    if not conn:
-        logging.error("Failed to get database connection for faces.db")
-        return False
-
-    vectors = []
-    filenames = []
-    skipped_count = 0
-    skipped_reasons = {}
-    
     try:
-        # 1. First get encodings from the faces table
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT filename, encoding FROM faces WHERE encoding IS NOT NULL"
-        )
-        face_rows = cursor.fetchall()
-        logging.info(f"Found {len(face_rows)} potential face encodings in the faces table.")
-
-        # Process face encodings
-        for row in face_rows:
-            filename = row[0]
-            encoding_blob = row[1]
-            try:
-                encoding = np.frombuffer(encoding_blob, dtype=np.float64)
-                if encoding.shape == (128,):
-                    vectors.append(encoding)
-                    filenames.append(filename)
-                else:
-                    skipped_count += 1
-                    reason = f"Encoding shape is {encoding.shape}, expected (128,)"
-                    skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-                    logging.warning(f"Skipping encoding for {filename}: {reason}")
-            except Exception as e:
-                skipped_count += 1
-                reason = f"Error decoding face encoding: {e}"
-                skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-                logging.warning(f"Skipping bad encoding for {filename}: {reason}")
-        
-        # 2. Now get encodings from the users table
-        try:
-            cursor.execute(
-                "SELECT id, username, profile_image, face_encoding FROM users WHERE face_encoding IS NOT NULL"
-            )
-            user_rows = cursor.fetchall()
-            logging.info(f"Found {len(user_rows)} potential user face encodings in the users table.")
+        with get_db_connection_with_app(app=app) as conn:
+            vectors = []
+            filenames = []
+            skipped_count = 0
+            skipped_reasons = {}
             
-            # Process user face encodings
-            for row in user_rows:
-                user_id = row[0]
-                username = row[1]
-                profile_image = row[2] or f"userprofile_{user_id}.jpg"
-                encoding_blob = row[3]
-                
+            # 1. First get encodings from the faces table
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT filename, encoding FROM faces WHERE encoding IS NOT NULL"
+            )
+            face_rows = cursor.fetchall()
+            logging.info(f"Found {len(face_rows)} potential face encodings in the faces table.")
+
+            # Process face encodings
+            for row in face_rows:
+                filename = row[0]
+                encoding_blob = row[1]
                 try:
                     encoding = np.frombuffer(encoding_blob, dtype=np.float64)
                     if encoding.shape == (128,):
                         vectors.append(encoding)
-                        filenames.append(profile_image)  # Use profile image as filename
-                        logging.debug(f"Added user encoding for {username} (ID: {user_id})")
+                        filenames.append(filename)
                     else:
                         skipped_count += 1
-                        reason = f"User encoding shape is {encoding.shape}, expected (128,)"
+                        reason = f"Encoding shape is {encoding.shape}, expected (128,)"
                         skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-                        logging.warning(f"Skipping user encoding for {username}: {reason}")
+                        logging.warning(f"Skipping encoding for {filename}: {reason}")
                 except Exception as e:
                     skipped_count += 1
-                    reason = f"Error decoding user encoding: {e}"
+                    reason = f"Error decoding face encoding: {e}"
                     skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
-                    logging.warning(f"Skipping bad user encoding for {username}: {reason}")
-        except Exception as e:
-            logging.error(f"Error retrieving user encodings: {e}")
-            # Continue with just face encodings if user encodings fail
-        
-        if not vectors:
-            logging.info("No valid face encodings found in database.")
-            return False
+                    logging.warning(f"Skipping bad encoding for {filename}: {reason}")
 
-        if vectors:
-            vectors_np = np.array(vectors, dtype=np.float32)
-            index = faiss.IndexFlatL2(128)
-            index.add(vectors_np)
+            if vectors:
+                vectors_np = np.array(vectors, dtype=np.float32)
+                index = faiss.IndexFlatL2(128)
+                index.add(vectors_np)
 
-            # Get paths with appropriate context handling
-            if app:
-                index_path = app.config.get("INDEX_PATH", DEFAULT_INDEX_PATH)
-                map_path = app.config.get("MAP_PATH", DEFAULT_MAP_PATH)
+                # Get paths with appropriate context handling
+                if app:
+                    index_path = app.config.get("INDEX_PATH", DEFAULT_INDEX_PATH)
+                    map_path = app.config.get("MAP_PATH", DEFAULT_MAP_PATH)
+                else:
+                    try:
+                        index_path = current_app.config.get(
+                            "INDEX_PATH", DEFAULT_INDEX_PATH
+                        )
+                        map_path = current_app.config.get("MAP_PATH", DEFAULT_MAP_PATH)
+                    except RuntimeError:
+                        index_path = DEFAULT_INDEX_PATH
+                        map_path = DEFAULT_MAP_PATH
+
+                faiss.write_index(index, index_path)
+                with open(map_path, "wb") as f:
+                    pickle.dump(filenames, f)
+
+                logging.info(
+                    f"✅ FAISS index built with {len(filenames)} vectors. {skipped_count} encodings skipped."
+                )
+                for reason, count in skipped_reasons.items():
+                    logging.info(f"  Reason for skipping ({count}): {reason}")
+
+                return True
             else:
-                try:
-                    index_path = current_app.config.get(
-                        "INDEX_PATH", DEFAULT_INDEX_PATH
-                    )
-                    map_path = current_app.config.get("MAP_PATH", DEFAULT_MAP_PATH)
-                except RuntimeError:
-                    index_path = DEFAULT_INDEX_PATH
-                    map_path = DEFAULT_MAP_PATH
-
-            faiss.write_index(index, index_path)
-            with open(map_path, "wb") as f:
-                pickle.dump(filenames, f)
-
-            logging.info(
-                f"✅ FAISS index built with {len(filenames)} vectors. {skipped_count} encodings skipped."
-            )
-            for reason, count in skipped_reasons.items():
-                logging.info(f"  Reason for skipping ({count}): {reason}")
-
-            return True
-        else:
-            logging.info("No valid face encodings to build FAISS index.")
-            return False
+                logging.info("No valid face encodings to build FAISS index.")
+                return False
 
     except Exception as e:
         logging.error(f"Failed to rebuild FAISS index: {e}")
         return False
-    finally:
-        conn.close()
 
 
 def find_similar_faces(encoding, top_k=50):
@@ -242,7 +195,7 @@ def find_similar_faces_faiss(query_encoding, top_k=50):
         distances, indices = index.search(query_vector, k)
 
         # Connect to database to get metadata
-        conn = get_db_connection()
+        conn = get_db_connection_with_app()
         cursor = conn.cursor()
 
         # Prepare results

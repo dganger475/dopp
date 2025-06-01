@@ -11,7 +11,7 @@ import logging
 from flask import Blueprint, current_app, jsonify, request, redirect, url_for, flash, session
 from flask_login import current_user, login_required # Assuming login_required is here or needs to be imported
 from models.user import User # Assuming User model exists
-from models.notification import Notification # Assuming Notification model exists
+from models.social import Notification # Assuming Notification model exists
 
 friends = Blueprint('friends', __name__)
 

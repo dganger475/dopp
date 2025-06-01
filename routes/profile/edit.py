@@ -8,9 +8,9 @@ from .helpers import save_image
 from utils.face.indexing import index_profile_face
 import wtforms
 
-edit_profile_bp = Blueprint('edit_profile', __name__)
+edit_profile = Blueprint('edit_profile', __name__)
 
-@edit_profile_bp.route("/edit", methods=["GET", "POST"])
+@edit_profile.route("/edit", methods=["GET", "POST"])
 @login_required
 def edit_profile_view():
     user = current_user

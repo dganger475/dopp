@@ -5,20 +5,20 @@ Authentication Blueprint
 Handles all user authentication routes with improved security and validation.
 """
 
-# Standard Library Imports
 import logging
 import os
 import sys
-import traceback
 from pathlib import Path
+from werkzeug.utils import secure_filename
+from PIL import Image
+import uuid
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,6 @@ PROJECT_ROOT = str(Path(__file__).parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-# Third-Party Imports
 from flask import (
     Blueprint,
     current_app,
@@ -37,7 +36,8 @@ from flask import (
     request,
     session,
     url_for,
-    jsonify
+    jsonify,
+    make_response
 )
 from flask_login import (
     current_user,
@@ -45,14 +45,12 @@ from flask_login import (
     login_user,
     logout_user
 )
-from urllib.parse import urlparse as url_parse
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf.csrf import generate_csrf
+from flask_cors import cross_origin
 
-# Project Imports
 from models.user import User
-from extensions import db
+from extensions import db, limiter
 from forms.auth_forms import LoginForm, RegisterForm
 from utils.csrf import csrf
 from utils.face.indexing import index_profile_face
@@ -70,248 +68,375 @@ from utils.cache_utils import (
 )
 from .config import get_profile_image_path, get_default_profile_image_path
 
-logger.info("Successfully imported all required modules for auth")
-
-try:
-    logger.info("Successfully imported all required modules for auth")
-except ImportError as e:
-    logger.error("Failed to import required modules: %s", str(e))
-    logger.error("Python path: %s", sys.path)
-    logger.error("Traceback:", exc_info=True)
-    raise
-
-# === Blueprint Definition ===
 auth = Blueprint("auth", __name__)
 
+def save_profile_photo(file, user_id):
+    """
+    Save a profile photo for a user.
+    
+    Args:
+        file: The uploaded file
+        user_id: The ID of the user
+        
+    Returns:
+        str: The filename of the saved photo
+        
+    Raises:
+        FileUploadError: If there's an error saving the file
+    """
+    try:
+        # Get the upload directory from config
+        upload_dir = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], 'profile_photos')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate a unique filename
+        ext = os.path.splitext(file.filename)[1].lower()
+        filename = f"{user_id}_{uuid.uuid4().hex}{ext}"
+        filepath = os.path.join(upload_dir, filename)
+        
+        # Save the file
+        file.save(filepath)
+        
+        # Validate and optimize the image
+        try:
+            with Image.open(filepath) as img:
+                # Convert to RGB if necessary
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize if too large
+                max_size = (800, 800)
+                if img.size[0] > max_size[0] or img.size[1] > max_size[1]:
+                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                
+                # Save optimized image
+                img.save(filepath, 'JPEG', quality=85, optimize=True)
+        except Exception as e:
+            logger.warning(f"Image optimization failed: {str(e)}")
+            # Continue even if optimization fails
+        
+        return filename
+    except Exception as e:
+        logger.error(f"Error saving profile photo: {str(e)}")
+        raise FileUploadError("Failed to save profile photo")
+
 def validate_password_strength(password):
-    """Validate password meets security requirements"""
-    if len(password) < current_app.config['PASSWORD_MIN_LENGTH']:
-        raise ValidationError('Password must be at least 8 characters long')
-    if current_app.config['PASSWORD_REQUIRE_UPPERCASE'] and not any(c.isupper() for c in password):
+    # Default values if config is missing
+    min_length = current_app.config.get('PASSWORD_MIN_LENGTH', 8)
+    require_uppercase = current_app.config.get('PASSWORD_REQUIRE_UPPERCASE', True)
+    require_lowercase = current_app.config.get('PASSWORD_REQUIRE_LOWERCASE', True)
+    require_numbers = current_app.config.get('PASSWORD_REQUIRE_NUMBERS', True)
+    require_special = current_app.config.get('PASSWORD_REQUIRE_SPECIAL', True)
+
+    if len(password) < min_length:
+        raise ValidationError(f'Password must be at least {min_length} characters long')
+    if require_uppercase and not any(c.isupper() for c in password):
         raise ValidationError('Password must contain at least one uppercase letter')
-    if current_app.config['PASSWORD_REQUIRE_LOWERCASE'] and not any(c.islower() for c in password):
+    if require_lowercase and not any(c.islower() for c in password):
         raise ValidationError('Password must contain at least one lowercase letter')
-    if current_app.config['PASSWORD_REQUIRE_NUMBERS'] and not any(c.isdigit() for c in password):
+    if require_numbers and not any(c.isdigit() for c in password):
         raise ValidationError('Password must contain at least one number')
-    if current_app.config['PASSWORD_REQUIRE_SPECIAL'] and not any(not c.isalnum() for c in password):
+    if require_special and not any(not c.isalnum() for c in password):
         raise ValidationError('Password must contain at least one special character')
 
 # =============================
 # LOGIN ROUTE
 # =============================
-@auth.route("/login", methods=["GET", "POST"])
+@auth.route("/login", methods=["GET", "POST", "OPTIONS"])
 @rate_limit
 @csrf.exempt
 def login():
-    """Handle user login with rate limiting and improved security"""
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "preflight"})
+        response.headers.add('Access-Control-Allow-Origin', request.headers.get('Origin', '*'))
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+
     try:
-        # Check if user is already logged in using session
+        # Check if user is already logged in
         user_id = session.get('user_id')
         if user_id:
-            user = User.get_by_id(user_id)
+            user = User.query.get(user_id)
             if user:
+                if request.is_json:
+                    return jsonify({"status": "already_logged_in", "redirect": url_for("social.feed.feed_page")})
                 return redirect(url_for("social.feed.feed_page"))
 
         if request.method == "POST":
-            # Handle both JSON and form data
             if request.is_json:
                 data = request.get_json()
-                username = sanitize_input(data.get("username"))
+                username_or_email = sanitize_input(data.get("username") or data.get("email"))
                 password = data.get("password")
             else:
                 form = LoginForm()
                 if form.validate_on_submit():
-                    email = sanitize_input(form.email.data)  # Using email field from form
+                    username_or_email = sanitize_input(form.email.data)
                     password = form.password.data
                 else:
-                    return render_template("login.html", title="Login", form=form)
+                    return render_template("auth/login.html", title="Login", form=form)
 
-            if request.is_json:
-                if not username or not password:
-                    raise ValidationError("Username and password are required")
-                user = User.get_by_username(username)
-            else:
-                if not email or not password:
-                    raise ValidationError("Email and password are required")
-                user = User.get_by_email(email)
-            
-            if not user or not user.verify_password(password):
-                # Increment failed login attempts
-                key = f'login_attempts:{request.remote_addr}'
-                attempts = increment_cache_value(key, timeout=3600)  # 1 hour timeout
+            if not username_or_email or not password:
+                raise ValidationError("Username/Email and password are required")
+
+            # Use SQLAlchemy session for database operations
+            with db.session.begin():
+                user = User.query.filter_by(username=username_or_email).first()
+                if not user:
+                    user = User.query.filter_by(email=username_or_email).first()
+                    logger.info(f"User not found by username, trying email lookup for: {username_or_email}")
+
+                if not user or not user.verify_password(password):
+                    key = f'login_attempts:{request.remote_addr}'
+                    attempts = increment_cache_value(key, timeout=3600)
+                    if attempts >= 5:
+                        raise AuthenticationError("Too many failed attempts. Please try again later.")
+                    if request.is_json:
+                        return jsonify({"error": "Invalid username or password"}), 401
+                    flash("Invalid email or password", "error")
+                    return render_template("auth/login.html", title="Login", form=LoginForm()), 401
+
+                delete_cache_value(f'login_attempts:{request.remote_addr}')
+
+                # Clear any existing session data
+                session.clear()
                 
-                if attempts >= 5:
-                    raise AuthenticationError("Too many failed attempts. Please try again later.")
+                # Set up new session
+                login_user(user)
+                session["user_id"] = user.id
+                session.permanent = True
                 
+                # Log successful login
+                logger.info(f"User {user.username} logged in successfully", extra={'user_id': user.id})
+
                 if request.is_json:
-                    raise AuthenticationError("Invalid username or password")
-                flash("Invalid email or password", "error")
-                return render_template("login.html", title="Login", form=LoginForm())
+                    return jsonify({
+                        "status": "success",
+                        "access_token": user.generate_auth_token(),
+                        "user": {
+                            "id": user.id,
+                            "username": user.username,
+                            "email": user.email,
+                            "profile_image_url": user.get_profile_image_url()
+                        }
+                    })
+                return redirect(url_for("social.feed.feed_page"))
 
-            # Reset failed login attempts
-            delete_cache_value(f'login_attempts:{request.remote_addr}')
-
-            login_user(user)
-            session["user_id"] = user.id
-            session.permanent = True
-            
-            # Log successful login
-            logger.info(f"User {user.username} logged in successfully", extra={'user_id': user.id})
-            
-            # Trigger FAISS index rebuild after successful login
-            try:
-                from utils.face.recognition import rebuild_faiss_index
-                current_app.logger.info(f"Triggering FAISS index rebuild on login for user {user.username}")
-                # Run the rebuild in a non-blocking way
-                rebuild_success = rebuild_faiss_index(app=current_app)
-                if rebuild_success:
-                    current_app.logger.info("FAISS index rebuilt successfully on login")
-                else:
-                    current_app.logger.warning("FAISS index rebuild failed on login")
-            except Exception as e:
-                current_app.logger.error(f"Error during FAISS index rebuild on login: {e}", exc_info=True)
-            
-            # Redirect to next page or default to feed
-            return redirect(url_for("social.feed.feed_page"))
-
-        return render_template("login.html", title="Login", form=LoginForm())
-
-    except (ValidationError, AuthenticationError) as e:
-        logger.warning(f"Login failed: {str(e)}", 
-                      extra={'ip': request.remote_addr})
-        if request.is_json:
-            return jsonify({"error": str(e)}), 401
-        flash(str(e), "error")
-        return render_template("login.html", title="Login", form=LoginForm()), 401
+        return render_template("auth/login.html", title="Login", form=LoginForm())
     except Exception as e:
-        logger.error(f"Login error: {str(e)}", exc_info=True,
-                    extra={'ip': request.remote_addr})
+        logger.error(f"Login error: {str(e)}", exc_info=True)
         if request.is_json:
-            return jsonify({"error": "An internal error occurred"}), 500
-        flash("An error occurred during login", "error")
-        return render_template("login.html", title="Login", form=LoginForm()), 500
+            return jsonify({"error": str(e)}), 500
+        flash(str(e), "error")
+        return render_template("auth/login.html", title="Login", form=LoginForm())
 
 # =============================
 # CURRENT USER CHECK
 # =============================
-@auth.route("/current_user", methods=["GET"])
-def current_user():
-    """Check if user is authenticated and return user info"""
+@limiter.exempt
+@auth.route("/current_user", methods=["GET", "OPTIONS"])
+def current_user_info():
+    """
+    Check if user is authenticated and return user info.
+    """
+    origin = request.headers.get('Origin')
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "preflight_ok"})
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, cache-control, X-Csrf-Token, X-CSRFToken'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Max-Age'] = '86400'
+        logger.debug(f"OPTIONS request to /current_user from {origin}, responding with CORS headers")
+        return response
+
     try:
+        logger.debug(f"GET request to /current_user from {origin}")
         user_id = session.get('user_id')
         if not user_id:
-            return jsonify({"authenticated": False}), 401
+            response = jsonify({
+                "authenticated": False,
+                "message": "No user session found"
+            })
+            if origin:
+                response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
 
         user = User.get_by_id(user_id)
         if not user:
-            return jsonify({"authenticated": False}), 401
+            response = jsonify({
+                "authenticated": False,
+                "message": "User not found"
+            })
+            if origin:
+                response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
 
-        return jsonify({
+        # (Omitted: profile_image_url logic for brevity)
+
+        response = jsonify({
             "authenticated": True,
+            "success": True,
             "user": {
                 "id": user.id,
                 "username": user.username,
-                "email": user.email
+                "email": user.email if hasattr(user, 'email') else None,
+                "profile_image": user.profile_image if hasattr(user, 'profile_image') else None,
+                "first_name": user.first_name if hasattr(user, 'first_name') else None,
+                "last_name": user.last_name if hasattr(user, 'last_name') else None
             }
         })
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
 
     except Exception as e:
-        logger.error(f"Current user check error: {str(e)}", exc_info=True)
-        return jsonify({"error": "Failed to check authentication"}), 500
+        logger.error(f"Error in current_user: {str(e)}", exc_info=True)
+        response = jsonify({
+            "authenticated": False,
+            "message": "Error checking authentication status"
+        })
+        response.status_code = 500
+        if origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
 
 # =============================
-# REGISTRATION ROUTE
+# REGISTRATION ROUTE (React-friendly version)
 # =============================
-@auth.route("/register", methods=["GET", "POST"])
-@rate_limit
+@auth.route('/register', methods=['GET', 'POST'])
+@cross_origin(supports_credentials=True)
 def register():
-    """Handle user registration with improved validation and security"""
-    try:
-        if current_user.is_authenticated:
-            return redirect(url_for("social.feed.feed_page"))
-
-        form = RegisterForm()
-
-        if form.validate_on_submit():
-            username = sanitize_input(form.username.data.strip())
-            email = sanitize_input(form.email.data.strip().lower())
-            password = form.password.data
-            profile_photo = form.profile_photo.data
-
-            # Validate password strength
-            validate_password_strength(password)
-
-            # Check for existing user
-            if User.get_by_username(username) or User.get_by_email(email):
-                raise ValidationError("Username or email already exists")
-
-            # Create user
-            user = User.create(
+    if request.method == 'POST':
+        try:
+            # Get form data
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            password2 = request.form.get('password2')
+            
+            # Validate required fields
+            if not all([username, email, password, password2]):
+                logger.info('Missing required fields')
+                return jsonify({'error': 'All fields are required'}), 400
+                
+            # Validate passwords match
+            if password != password2:
+                logger.info('Passwords do not match')
+                return jsonify({'error': 'Passwords do not match'}), 400
+                
+            # Check if username or email already exists
+            if User.query.filter_by(username=username).first():
+                logger.info(f'Username already exists: {username}')
+                return jsonify({'error': 'Username already exists'}), 400
+            if User.query.filter_by(email=email).first():
+                logger.info(f'Email already exists: {email}')
+                return jsonify({'error': 'Email already exists'}), 400
+                
+            # Handle profile photo upload
+            if 'profile_photo' not in request.files:
+                logger.info('Profile photo is required')
+                return jsonify({'error': 'Profile photo is required'}), 400
+                
+            profile_photo = request.files['profile_photo']
+            if not profile_photo.filename:
+                logger.info('No selected file for profile photo')
+                return jsonify({'error': 'No selected file'}), 400
+            
+            # Create new user first to get the ID
+            new_user = User(
                 username=username,
-                email=email,
-                password=password
+                email=email
             )
-
-            if not user:
-                raise ValidationError("Failed to create user")
-
-            # Handle profile photo
-            if profile_photo:
-                try:
-                    filename = save_profile_photo(profile_photo, user.id)
-                    if filename:
-                        user.update(profile_image=filename)
-                        index_profile_face(filename, user.id, username)
-                except FileUploadError as e:
-                    logger.warning(f"Profile photo upload failed: {str(e)}")
-                    flash("Could not process profile photo. Using default image.", "warning")
-
-            # Set default profile image if none provided
-            if not user.profile_image:
-                default_image = os.path.basename(get_default_profile_image_path())
-                user.update(profile_image=default_image)
-
-            login_user(user)
-            session['user_id'] = user.id
-            session.permanent = True
-
-            logger.info(f"User registered successfully: {username}",
-                       extra={'user_id': user.id})
-
-            return redirect(url_for("social.feed.feed_page"))
-
-        return render_template("register.html", form=form)
-
-    except ValidationError as e:
-        flash(str(e), "error")
-        return render_template("register.html", form=form), 400
-    except Exception as e:
-        logger.error(f"Registration error: {str(e)}", exc_info=True)
-        flash("An error occurred during registration", "error")
-        return render_template("register.html", form=form), 500
+            new_user.set_password(password)
+            
+            db.session.add(new_user)
+            db.session.commit()
+            logger.info(f'Created new user: {new_user.id} ({new_user.username})')
+            
+            try:
+                # Save profile photo using the existing function
+                filename = save_profile_photo(profile_photo, new_user.id)
+                logger.info(f'Saved profile photo as: {filename}')
+                new_user.profile_image = filename
+                db.session.commit()
+                logger.info(f'Updated user {new_user.id} profile_image to {filename}')
+                
+                # Encode face and add to FAISS index
+                face_encoding = index_profile_face(
+                    os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'], 'profile_photos', filename),
+                    new_user.id,
+                    username
+                )
+                logger.info(f'index_profile_face result: {face_encoding}')
+                if face_encoding is None:
+                    # If face encoding fails, delete the user and return error
+                    db.session.delete(new_user)
+                    db.session.commit()
+                    logger.info('Face encoding failed, user deleted')
+                    return jsonify({'error': 'Could not detect a face in the uploaded image. Please try again with a clearer photo.'}), 400
+                
+                # Log in the user
+                login_user(new_user)
+                logger.info(f'User {new_user.id} logged in after registration')
+                
+                response = {
+                    'message': 'Registration successful',
+                    'user': {
+                        'id': new_user.id,
+                        'username': new_user.username,
+                        'email': new_user.email,
+                        'profile_photo': new_user.profile_image
+                    }
+                }
+                logger.info(f'Registration response: {response}')
+                return jsonify(response), 201
+                
+            except Exception as e:
+                # If anything fails after user creation, delete the user
+                db.session.delete(new_user)
+                db.session.commit()
+                current_app.logger.error(f"Error processing profile photo: {str(e)}")
+                return jsonify({'error': 'Error processing profile photo. Please try again.'}), 500
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Registration error: {str(e)}")
+            return jsonify({'error': 'Registration failed. Please try again.'}), 500
+    # For GET requests, return a 404 since we're using a SPA
+    return jsonify({'error': 'Not found'}), 404
 
 # =============================
 # LOGOUT ROUTE
 # =============================
-@auth.route("/logout")
-@login_required
+@auth.route('/logout', methods=['GET', 'POST', 'OPTIONS'])
 def logout():
-    """Handle user logout"""
-    try:
-        user_id = current_user.id
-        logout_user()
-        session.clear()
-        logger.info(f"User logged out", extra={'user_id': user_id})
-        flash("You have been logged out", "info")
-    except Exception as e:
-        logger.error(f"Logout error: {str(e)}", exc_info=True)
-        flash("An error occurred during logout", "error")
-    
-    return redirect(url_for("auth.login"))
+    # Handle CORS preflight
+    origin = request.headers.get('Origin', '*')
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    # Actual logout logic
+    logout_user()
+    session.clear()
+    response = jsonify({'success': True, 'message': 'Logged out'})
+    response.headers['Access-Control-Allow-Origin'] = origin
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
 
 @auth.route("/api/csrf-token", methods=["GET"])
 def get_csrf_token():
-    """API endpoint to fetch a CSRF token."""
     try:
         token = generate_csrf()
         return jsonify({"csrf_token": token, "message": "CSRF token generated"}), 200
@@ -319,28 +444,19 @@ def get_csrf_token():
         current_app.logger.error(f"Error generating CSRF token: {str(e)}", exc_info=True)
         return jsonify({"error": "Failed to generate CSRF token"}), 500
 
-# =============================
-# PASSWORD RESET ROUTE
-# =============================
 @auth.route("/reset-password", methods=["GET", "POST"])
 def reset_password_request():
-    return render_template("reset_password.html")
+    return render_template("auth/reset_password.html")
 
-# =============================
-# ACCOUNT SETTINGS ROUTE
-# =============================
 @auth.route("/account")
 @login_required
 def account():
-    """Handle account page access"""
     try:
         user = User.get_by_id(session.get("user_id"))
         if not user:
             session.clear()
             raise AuthenticationError("User not found")
-        
-        return render_template("account.html", user=user)
-    
+        return render_template("auth/account.html", user=user)
     except AuthenticationError as e:
         flash(str(e), "error")
         return redirect(url_for("auth.login"))
@@ -349,67 +465,7 @@ def account():
         flash("An error occurred", "error")
         return redirect(url_for("main.index"))
 
-# =============================
-# GET CURRENT USER ROUTE (API)
-# =============================
-@auth.route("/current_user", methods=["GET"])
-def get_current_user():
-    """Get current user information using session-based authentication."""
-    try:
-        user_id = session.get('user_id')
-        if not user_id:
-            return jsonify({"error": "Not authenticated", "success": False}), 401
-
-        user = User.get_by_id(user_id)
-        if not user:
-            # This case might happen if user_id in session is stale (e.g., user deleted)
-            session.pop('user_id', None) # Clear stale session
-            return jsonify({"error": "User not found or session invalid", "success": False}), 401
-        
-        # Format profile image URL properly
-        profile_image_url = None
-        if hasattr(user, 'profile_image') and user.profile_image:
-            # Get the raw profile image path
-            raw_path = user.profile_image
-            
-            # Determine the correct location of the profile image
-            if raw_path.startswith('/static/'):
-                # Already starts with /static/ - use as is
-                profile_image_url = url_for('static', filename=raw_path[8:]) # Remove '/static/' prefix
-            elif raw_path.startswith('/profile_pics/') or raw_path.startswith('profile_pics/'):
-                # Strip leading slash if present and add to static URL
-                clean_path = raw_path.lstrip('/')
-                profile_image_url = url_for('static', filename=clean_path)
-            elif '/' not in raw_path:
-                # If it's just a filename with no path, assume it's in profile_pics
-                profile_image_url = url_for('static', filename=f'profile_pics/{raw_path}')
-            else:
-                # Use as is if it's already a full URL
-                profile_image_url = raw_path
-                
-            # Add host to URL if it's relative
-            if profile_image_url.startswith('/'):
-                # This ensures the image path has the full host, which the React app needs
-                host = request.host_url.rstrip('/')
-                profile_image_url = f"{host}{profile_image_url}"
-        else:
-            # Default image as a full URL with host
-            default_img_url = url_for('static', filename='images/default_profile.jpg')
-            host = request.host_url.rstrip('/')
-            profile_image_url = f"{host}{default_img_url}"
-            
-        return jsonify({
-            "success": True,
-            "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "profile_image": user.profile_image if hasattr(user, 'profile_image') else None,
-                "profile_image_url": profile_image_url, # Add formatted URL
-                "first_name": user.first_name if hasattr(user, 'first_name') else None,
-                "last_name": user.last_name if hasattr(user, 'last_name') else None
-            }
-        }), 200
-    except Exception as e:
-        logger.error(f"API error in get_current_user: {str(e)}", exc_info=True)
-        return jsonify({"error": "An internal error occurred", "success": False}), 500
+@limiter.exempt
+@auth.route("/auth_status", methods=["GET", "OPTIONS"])
+def auth_status():
+    return current_user_info()

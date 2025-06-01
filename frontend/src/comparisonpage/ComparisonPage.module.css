@@ -1,0 +1,417 @@
+.comparisonPage {
+  background: var(--dopple-white, #ffffff);
+  min-height: 100vh;
+  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+  color: #222;
+  box-sizing: border-box;
+  padding: 20px;
+  padding-bottom: 80px; /* Space for the fixed navbar */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 auto;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #333;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.content {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.matchPercentage {
+  background-color: #e0e0e0;
+  color: #333333;
+  font-weight: bold;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-size: 24px;
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  min-width: 150px;
+  transition: all 0.3s ease;
+  border: 2px solid #000000;
+}
+
+.animatePercentage {
+  animation: animatePercentage 2.5s forwards;
+}
+
+@keyframes animatePercentage {
+  0% {
+    transform: translateX(-50%) scale(1);
+  }
+  20% {
+    transform: translateX(-50%) scale(1.1);
+  }
+  40% {
+    transform: translateX(-50%) scale(1);
+  }
+  60% {
+    transform: translateX(-50%) scale(0.95);
+  }
+  80% {
+    transform: translateX(-50%) scale(0.9) translateY(50px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.5) translateY(200px);
+    opacity: 0;
+  }
+}
+
+.imagesContainer {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 60px; /* Increased to make room for the percentage badge */
+  position: relative;
+  transition: all 0.5s ease;
+  padding: 20px;
+  padding-bottom: 50px; /* Extra padding at bottom for percentage badge */
+  width: 100%;
+  max-width: 600px;
+  border-radius: 6px;
+}
+
+/* Animation for share to feed */
+.animateShare {
+  animation: shareToFeed 2.5s forwards;
+  background-color: #007bff;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  border: 3px solid #000000;
+}
+
+@keyframes shareToFeed {
+  0% {
+    transform: scale(1);
+    background-color: #007bff;
+  }
+  20% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    background-color: #007bff;
+  }
+  40% {
+    transform: scale(0.95);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    background-color: #007bff;
+  }
+  60% {
+    transform: scale(0.9);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border-radius: 6px;
+    background-color: #007bff;
+  }
+  80% {
+    transform: scale(0.8) translateY(50px);
+    opacity: 0.8;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border-radius: 6px;
+    background-color: #007bff;
+  }
+  100% {
+    transform: scale(0.5) translateY(200px);
+    opacity: 0;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border-radius: 6px;
+    background-color: #007bff;
+  }
+}
+
+.imageWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.imageBorder {
+  width: 64px;
+  height: 64px;
+  border: 3px solid #000000;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  background-color: #f0f2f5;
+}
+
+.faceImage {
+  width: 56px;
+  height: 56px;
+  border-radius: 2px;
+  object-fit: cover;
+  object-position: center;
+  background-color: #f0f0f0;
+  display: block;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+}
+
+.noImagePlaceholder {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #444444;
+  color: #ffffff;
+  font-size: 10px;
+  text-align: center;
+  padding: 4px;
+  border-radius: 2px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.imageLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  text-align: center;
+}
+
+.animationContainer {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+.actionsContainer {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid #000000;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.shareButton {
+  background-color: #007bff;
+}
+
+.shareButton:hover {
+  background-color: #0056b3;
+}
+
+.addButton {
+  background-color: #28a745;
+}
+
+.addButton:hover {
+  background-color: #218838;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.loadingSpinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.errorContainer {
+  padding: 20px;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.errorContainer h2 {
+  color: #dc3545;
+  margin-bottom: 10px;
+}
+
+/* For when images are being animated together */
+.animateShare .imageBorder {
+  transition: all 0.5s ease;
+  border-color: #007bff;
+}
+
+.comparisonPageContainer {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 24px 0 0 0;
+}
+
+.comparisonContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.cardsContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.cardsRow {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  justify-content: center;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  overflow-x: auto;
+  max-width: 100vw;
+  padding-bottom: 8px;
+}
+
+.cardsRow > * {
+  min-width: 160px;
+  max-width: 220px;
+  flex: 0 0 auto;
+}
+
+.matchCardFallback {
+  background: #007bff;
+  border-radius: 16px;
+  padding: 24px;
+  color: #fff;
+  min-width: 320px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionsContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  color: #007bff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 4px solid #eee;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .comparisonContent {
+    padding: 8px;
+  }
+  .cardsRow {
+    gap: 12px;
+  }
+  .cardsRow > * {
+    min-width: 260px;
+    max-width: 95vw;
+  }
+}
+
+@media (max-width: 600px) {
+  .comparisonContent {
+    padding: 2px;
+  }
+  .cardsRow {
+    gap: 8px;
+  }
+  .cardsRow > * {
+    min-width: 200px;
+    max-width: 98vw;
+  }
+}
