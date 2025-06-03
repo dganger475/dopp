@@ -1,16 +1,18 @@
 services:
   - type: web
-    name: dopp-backend
+    name: dopp
     env: python
     buildCommand: ./build.sh
     startCommand: gunicorn app:app
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
       - key: FLASK_ENV
         value: production
       - key: FLASK_APP
         value: app.py
-      - key: PYTHON_VERSION
-        value: 3.9.18
+      - key: PORT
+        value: 5000
       - key: DATABASE_URL
         sync: false
       - key: B2_APPLICATION_KEY_ID

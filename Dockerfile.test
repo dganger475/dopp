@@ -1,0 +1,7 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN echo "print('Hello, Docker!')" > test.py
+
+CMD ["python", "test.py"] 

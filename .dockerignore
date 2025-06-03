@@ -1,56 +1,83 @@
 # Git
 .git
 .gitignore
-.gitattributes
+.github
+.vs
 
 # Python
-__pycache__
-*.pyc
-*.pyo
-*.pyd
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
 .Python
-env
-pip-log.txt
-pip-delete-this-directory.txt
-.tox
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
 .coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.pytest_cache
-.mypy_cache
-.hypothesis
 
 # Virtual Environment
-venv
-.env
-.venv
-ENV
+venv/
+ENV/
 
 # IDE
-.idea
-.vscode
+.idea/
+.vscode/
 *.swp
 *.swo
-.DS_Store
 
-# Project specific
+# Logs
+*.log
+*_log.txt
+debug_output.txt
+
+# Local development
+.env
+.env.local
+.env.*.local
+
+# Database
 *.db
 *.sqlite3
-instance
-logs
-uploads
-static/uploads
-static/profile_pics
-tests
-docs
-*.md
-!README.md
+instance/
+
+# Large data directories
+static/extracted_faces/
+static/uploads/
+uploads/
+extracted_faces/
+data/
 
 # Docker
 Dockerfile
-docker-compose.yml
-.docker 
+.dockerignore
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Backup files
+*.backup*
+*.bak
+*.old
+
+# Other
+.DS_Store
+Thumbs.db
+*.csv
+*.json
+!config.json
+!package.json 

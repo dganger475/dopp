@@ -10,11 +10,6 @@ import platform
 import logging
 import time
 from datetime import timedelta
-import os
-import platform
-import logging
-import time
-from datetime import timedelta
 import sqlite3
 
 # Load environment variables first
@@ -55,9 +50,6 @@ from utils.files.utils import generate_face_filename, is_anonymized_face_filenam
 
 # Import models
 from models.user import User
-
-# Import blueprints after app is created to avoid circular imports
-# This function is replaced with the comprehensive setup_cors in utils.cors
 
 def register_blueprints(app):
     """Register Flask blueprints with app."""
@@ -159,16 +151,8 @@ def create_app(config_class=None):
         from extensions import db
         db.create_all()
     
-    # Add template context processors
-    @app.context_processor
-    def utility_processor():
-        return {
-            'get_face_image_url': get_face_image_url,
-            'get_profile_image_url': get_profile_image_url,
-            'generate_face_filename': generate_face_filename,
-            'is_anonymized_face_filename': is_anonymized_face_filename,
-            'parse_face_id_from_filename': parse_face_id_from_filename
-        }
+    # Initialize template helpers
+    init_template_helpers(app)
     
     # Serve React App
     @app.route('/', defaults={'path': ''})
@@ -181,7 +165,9 @@ def create_app(config_class=None):
     
     return app
 
-# Only create the app if this file is run directly
+# Create the app instance for Gunicorn
+app = create_app()
+
+# Only run the app if this file is run directly
 if __name__ == '__main__':
-    app = create_app()
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1,3 +1,25 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "cmake>=3.8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["find:"]
+
+[project]
+name = "dopp"
+version = "0.1.0"
+description = "Doppleganger Social Network"
+requires-python = ">=3.10"
+
+[tool.cmake]
+version = ">=3.8"
+generator = "Ninja"
+
+[tool.dlib]
+use_cuda = false
+use_avx = true
+use_sse4 = true
+
 [tool.black]
 line-length = 88
 target-version = ['py39']
