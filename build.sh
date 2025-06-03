@@ -1,10 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # exit on error
-set -o errexit
+set -e
 
-# Install system dependencies
-apt-get update
-apt-get install -y --no-install-recommends \
+# Install minimal system dependencies first
+apt-get update && apt-get install -y \
     build-essential \
     cmake \
     pkg-config \
@@ -12,22 +11,31 @@ apt-get install -y --no-install-recommends \
     libatlas-base-dev \
     libgtk-3-dev \
     libboost-python-dev \
-    libpq-dev \
-    python3-venv
+    python3-venv \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create and activate virtual environment
 python3 -m venv /opt/venv
 . /opt/venv/bin/activate
 
-# Install Python dependencies
-pip install --upgrade pip
+# Upgrade pip and install wheel without caching
+pip install --no-cache-dir --upgrade pip
 pip install --no-cache-dir wheel setuptools
 
-# Install dlib from pre-built wheel for Python 3.10
-pip install --no-cache-dir https://github.com/jloh02/dlib/releases/download/v19.22/dlib-19.22.1-cp310-cp310-linux_x86_64.whl
+# Install dlib from pre-built wheel first (without dependencies)
+pip install --no-cache-dir --no-deps https://github.com/jloh02/dlib/releases/download/v19.22/dlib-19.22.1-cp310-cp310-linux_x86_64.whl
 
-# Install other dependencies
+# Install core dependencies first
+pip install --no-cache-dir flask gunicorn
+
+# Install other dependencies in smaller batches
+pip install --no-cache-dir numpy
+pip install --no-cache-dir face-recognition
 pip install --no-cache-dir -r requirements.txt
 
-# Make sure the virtual environment is used when running the app
+# Clean up pip cache
+rm -rf ~/.cache/pip
+
+# Ensure virtual environment is activated when running the app
 echo "source /opt/venv/bin/activate" >> /etc/profile.d/venv.sh 

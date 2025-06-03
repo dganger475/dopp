@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: dopp
+    name: dopp-backend
     env: python
-    buildCommand: ./build.sh
-    startCommand: source /opt/venv/bin/activate && gunicorn app:app
+    buildCommand: |
+      chmod +x build.sh
+      ./build.sh
+    startCommand: source /opt/venv/bin/activate && gunicorn app:app --workers 2 --threads 2 --worker-class gthread
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0
@@ -12,10 +14,8 @@ services:
       - key: FLASK_APP
         value: app.py
       - key: PORT
-        value: 5000
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
+        value: 10000
+      - key: DATABASE_URL
         sync: false
       - key: B2_APPLICATION_KEY_ID
         sync: false
@@ -24,4 +24,14 @@ services:
       - key: B2_BUCKET_NAME
         sync: false
       - key: SECRET_KEY
-        generateValue: true 
+        sync: false
+    plan: standard
+    buildFilter:
+      paths:
+        - package.json
+        - requirements.txt
+        - build.sh
+        - app.py
+        - render.yaml
+    healthCheckPath: /api/health
+    autoDeploy: true 
