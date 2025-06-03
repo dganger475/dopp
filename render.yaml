@@ -3,7 +3,7 @@ services:
     name: dopp
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn app:app
+    startCommand: source /opt/venv/bin/activate && gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0

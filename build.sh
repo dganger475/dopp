@@ -12,9 +12,17 @@ apt-get install -y --no-install-recommends \
     libatlas-base-dev \
     libgtk-3-dev \
     libboost-python-dev \
-    libpq-dev
+    libpq-dev \
+    python3-venv
+
+# Create and activate virtual environment
+python3 -m venv /opt/venv
+. /opt/venv/bin/activate
 
 # Install Python dependencies
 pip install --upgrade pip
 pip install dlib==19.22.1
-pip install -r requirements.txt 
+pip install -r requirements.txt
+
+# Make sure the virtual environment is used when running the app
+echo "source /opt/venv/bin/activate" >> /etc/profile.d/venv.sh 
