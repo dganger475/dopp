@@ -1,9 +1,13 @@
 // Base URL for API requests - dynamically determined
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-  ? '' // Use relative URLs in development
-  : window.location.hostname.includes('ngrok-free.app')
-    ? `https://${window.location.hostname}`
-    : window.location.origin;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? '' // Use relative URLs in development
+    : window.location.hostname.includes('ngrok-free.app')
+      ? `https://${window.location.hostname}`
+      : window.location.hostname === 'dopple503.fly.dev'
+        ? 'https://dopple503.fly.dev'
+        : window.location.origin
+);
 
 // Helper function to build API URLs with proper handling
 export const getApiUrl = (path) => {
