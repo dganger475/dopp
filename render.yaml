@@ -13,7 +13,9 @@ services:
         value: app.py
       - key: PORT
         value: 5000
-      - key: DATABASE_URL
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
         sync: false
       - key: B2_APPLICATION_KEY_ID
         sync: false
