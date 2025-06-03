@@ -23,8 +23,13 @@ python3 -m venv /opt/venv
 pip install --no-cache-dir --upgrade pip
 pip install --no-cache-dir wheel setuptools
 
-# Install dlib from pre-built wheel first (without dependencies)
-pip install --no-cache-dir --no-deps https://github.com/jloh02/dlib/releases/download/v19.22/dlib-19.22.1-cp310-cp310-linux_x86_64.whl
+# Set environment variables for dlib build
+export CFLAGS="-O2 -march=native -mtune=native"
+export CXXFLAGS="-O2 -march=native -mtune=native"
+export MAKEFLAGS="-j2"
+
+# Install dlib with optimized build flags
+pip install --no-cache-dir dlib==19.22.1
 
 # Install core dependencies first
 pip install --no-cache-dir flask gunicorn
