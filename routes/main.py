@@ -13,7 +13,7 @@ Notes:
 # === Standard Library Imports ===
 from datetime import datetime, timedelta
 
-import PyJWT as jwt
+import jwt
 
 # === Third-Party Imports ===
 from flask import (
