@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production \
     PORT=8080 \
-    CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON"
+    CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON" \
+    FORCE_CMAKE=1
 
 # Create and set working directory
 WORKDIR /app
@@ -38,7 +39,7 @@ COPY requirements.txt .
 
 # Install dlib using a pre-built wheel
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir https://github.com/jloh02/dlib/releases/download/v19.24/dlib-19.24.0-cp310-cp310-linux_x86_64.whl
+    pip install --no-cache-dir https://github.com/KoushikNavuluri/dlib/releases/download/v19.24/dlib-19.24.0-cp310-cp310-linux_x86_64.whl
 
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
