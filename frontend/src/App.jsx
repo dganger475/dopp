@@ -2,7 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react'; // Added Suspense
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'; // Added useLocation
 import LoginPage from './loginpage/LoginPage'; 
 import PlasmicHost from './plasmic-host';
-import '../../static/css/main.css';
+import './App.css';
 import GlobalTopNav from './components/GlobalTopNav'; // Import GlobalTopNav
 import { SharedMatchProvider } from './context/SharedMatchContext'; // Import SharedMatchProvider
 import API_BASE_URL from './config/api';
