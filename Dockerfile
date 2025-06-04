@@ -43,8 +43,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir numpy && \
     pip install --no-cache-dir cmake && \
-    wget https://github.com/jloh02/dlib/releases/download/v19.24/dlib-19.24.0-cp310-cp310-linux_x86_64.whl && \
-    pip install --no-cache-dir dlib-19.24.0-cp310-cp310-linux_x86_64.whl && \
+    pip install --no-cache-dir dlib==19.24.0 && \
     pip install --no-cache-dir face-recognition==1.3.0
 
 # Install other Python dependencies
