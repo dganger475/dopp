@@ -37,6 +37,7 @@ from template_helpers import init_template_helpers
 
 # Import config after environment variables are loaded
 from config import config as config_dict, Config
+from config.cache import CacheConfig
 
 # Import extensions (db will be initialized later)
 from extensions import cache, limiter, session, talisman, login_manager, moment, db, init_extensions
@@ -101,23 +102,16 @@ def register_blueprints(app):
 
 def create_app(config_class=None):
     """Create and configure the Flask application."""
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     if config_class == 'testing':
         from config import TestingConfig
         app.config.from_object(TestingConfig)
     else:
         # your normal config loading
         from config import Config
+        from config.cache import CacheConfig
         app.config.from_object(Config)
-    
-    # Configure session settings
-    app.config['SESSION_TYPE'] = 'filesystem'
-    app.config['SESSION_FILE_DIR'] = os.path.join(app.root_path, 'flask_session')
-    app.config['SESSION_PERMANENT'] = True
-    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
-    app.config['SESSION_COOKIE_SECURE'] = False  # For local development
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # For local development
+        app.config.from_object(CacheConfig)
     
     # Initialize extensions first
     from extensions import init_extensions
