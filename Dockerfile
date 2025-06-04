@@ -19,7 +19,7 @@ RUN apt-get update && \
     libx11-dev \
     libatlas-base-dev \
     libgtk-3-dev \
-    libboost-python-dev \
+    libboost-all-dev \
     libsm6 \
     libxext6 \
     libxrender-dev \
