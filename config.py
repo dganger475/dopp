@@ -30,7 +30,13 @@ class Config:
     
     # Rate limiting
     RATELIMIT_DEFAULT = os.getenv('RATELIMIT_DEFAULT', '200 per day')
-    RATELIMIT_STORAGE_URL = os.getenv('RATELIMIT_STORAGE_URL', 'memory://')
+    RATELIMIT_STORAGE_URL = os.getenv('RATELIMIT_STORAGE_URL', 'redis://localhost:6379/0')
+    RATELIMIT_STRATEGY = 'fixed-window'
+    RATELIMIT_HEADERS_ENABLED = True
+    RATELIMIT_HEADERS_RESET = True
+    RATELIMIT_HEADERS_RETRY_AFTER = True
+    RATELIMIT_HEADERS_REMAINING = True
+    RATELIMIT_HEADERS_LIMIT = True
     
     # Security settings
     SESSION_COOKIE_SECURE = True

@@ -5,6 +5,10 @@ Creates and configures the Flask application instance using the app factory patt
 This allows flexible initialization across environments and contexts (CLI, gunicorn, testing, etc).
 """
 
+# Monkey patch before any other imports
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import platform
 import logging
