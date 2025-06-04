@@ -37,9 +37,10 @@ RUN apt-get update && \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dlib using a pre-built wheel
+# Install dlib from source with specific version
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir https://github.com/KoushikNavuluri/dlib/releases/download/v19.24/dlib-19.24.0-cp310-cp310-linux_x86_64.whl
+    pip install --no-cache-dir numpy && \
+    pip install --no-cache-dir dlib==19.22.0
 
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
