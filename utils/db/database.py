@@ -11,7 +11,9 @@ from threading import Lock
 import os
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.declarative import declarative_base
+from config import get_settings
 from sqlalchemy.pool import QueuePool
 import urllib.parse
 from sqlalchemy.exc import SQLAlchemyError
@@ -32,6 +34,17 @@ _connection_last_used = {}
 MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
 CONNECTION_TIMEOUT = 30  # seconds
+
+settings = get_settings()
+
+# Create SQLAlchemy engine
+engine = create_engine(settings.DATABASE_URL)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create base class for models
+Base = declarative_base()
 
 def _cleanup_connections():
     """Clean up all database connections when the application exits."""
@@ -302,4 +315,35 @@ def get_table_schema(table_name):
         return engine.dialect.get_columns(engine, table_name)
     except Exception as e:
         logger.error(f"Error getting table schema: {str(e)}")
+        raise
+
+def get_db() -> Session:
+    """
+    Get a database session.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# For backward compatibility
+def get_users_db_connection():
+    """
+    Legacy function for backward compatibility.
+    Returns a database session.
+    """
+    return SessionLocal()
+
+def setup_users_db():
+    """
+    Initialize the users database and create necessary tables.
+    This function is called during application startup.
+    """
+    try:
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        logging.info("Successfully initialized users database")
+    except Exception as e:
+        logging.error(f"Error initializing users database: {e}")
         raise

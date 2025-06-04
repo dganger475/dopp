@@ -8,7 +8,7 @@ import sys
 import importlib
 import logging
 
-from utils.db.database import setup_users_db
+from utils.db.database import setup_users_db, init_app
 from utils.face.recognition import rebuild_faiss_index
 from utils.index.faiss_manager import faiss_index_manager
 from utils.db.migrations import run_migrations
@@ -29,7 +29,8 @@ def run_startup_tasks(app):
     
     # 1. Setup initial database tables (idempotent)
     logger.info("Ensuring base database tables are set up...")
-    setup_users_db(app)
+    init_app(app)  # Initialize SQLAlchemy
+    setup_users_db()  # Create tables
     logger.info("Base database table setup check complete.")
 
     # 2. Apply database migrations (idempotent)
