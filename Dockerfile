@@ -5,7 +5,8 @@ FROM python:3.10-slim
 ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production \
-    PORT=8080
+    PORT=8080 \
+    CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON"
 
 # Create and set working directory
 WORKDIR /app
@@ -35,9 +36,9 @@ RUN apt-get update && \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dlib first with specific version
+# Install dlib using a pre-built wheel
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir dlib==19.24.2
+    pip install --no-cache-dir https://github.com/jloh02/dlib/releases/download/v19.24/dlib-19.24.0-cp310-cp310-linux_x86_64.whl
 
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
