@@ -8,6 +8,11 @@ import time
 from typing import Optional, Generator, List
 from queue import Queue
 from threading import Lock
+import os
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 
 """
 Database Utilities
@@ -156,3 +161,88 @@ def init_app(app):
             raise
     
     return app
+
+def get_db_connection():
+    """Get a database connection using SQLAlchemy."""
+    try:
+        if current_app:
+            return current_app.db.session
+        else:
+            # Create a new engine and session if not in app context
+            engine = create_engine(
+                os.getenv('DATABASE_URL'),
+                poolclass=QueuePool,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
+                pool_recycle=1800
+            )
+            Session = sessionmaker(bind=engine)
+            return Session()
+    except Exception as e:
+        logger.error(f"Error getting database connection: {str(e)}")
+        raise
+
+def get_db_engine():
+    """Get the SQLAlchemy engine instance."""
+    try:
+        if current_app:
+            return current_app.db.engine
+        else:
+            return create_engine(
+                os.getenv('DATABASE_URL'),
+                poolclass=QueuePool,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
+                pool_recycle=1800
+            )
+    except Exception as e:
+        logger.error(f"Error getting database engine: {str(e)}")
+        raise
+
+def execute_query(query, params=None):
+    """Execute a SQL query using SQLAlchemy."""
+    try:
+        session = get_db_connection()
+        result = session.execute(query, params or {})
+        session.commit()
+        return result
+    except Exception as e:
+        logger.error(f"Error executing query: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+def execute_many(query, params_list):
+    """Execute multiple SQL queries using SQLAlchemy."""
+    try:
+        session = get_db_connection()
+        for params in params_list:
+            session.execute(query, params or {})
+        session.commit()
+    except Exception as e:
+        logger.error(f"Error executing multiple queries: {str(e)}")
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+def get_table_names():
+    """Get list of all table names in the database."""
+    try:
+        engine = get_db_engine()
+        return engine.table_names()
+    except Exception as e:
+        logger.error(f"Error getting table names: {str(e)}")
+        raise
+
+def get_table_schema(table_name):
+    """Get schema information for a specific table."""
+    try:
+        engine = get_db_engine()
+        return engine.dialect.get_columns(engine, table_name)
+    except Exception as e:
+        logger.error(f"Error getting table schema: {str(e)}")
+        raise

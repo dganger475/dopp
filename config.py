@@ -13,19 +13,17 @@ class Config:
     
     # Application settings
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev')
-    DEBUG = False
-    TESTING = False
+    FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+    DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
     # Database settings
-    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/postgres')
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': int(os.getenv('DATABASE_POOL_SIZE', '10')),
-        'pool_timeout': int(os.getenv('DATABASE_POOL_TIMEOUT', '30')),
-        'pool_recycle': int(os.getenv('DATABASE_POOL_RECYCLE', '1800')),
-        'max_overflow': int(os.getenv('DATABASE_MAX_OVERFLOW', '5')),
-        'echo': False
+        'pool_size': 5,
+        'max_overflow': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 1800
     }
     
     # Cache settings
@@ -44,10 +42,14 @@ class Config:
     RATELIMIT_HEADERS_LIMIT = True
     
     # Security settings
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
     
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
@@ -55,11 +57,12 @@ class Config:
     
     # File upload settings
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
     
     # API settings
-    API_RATE_LIMIT = os.getenv('API_RATE_LIMIT', '100 per minute')
+    API_RATE_LIMIT = "100 per minute"
+    API_RATE_LIMIT_STORAGE_URL = "memory://"
     API_VERSION = '1.0'
     
     # Social features
@@ -79,9 +82,9 @@ class Config:
     COMPRESS_MIN_SIZE = 500
     
     # Face recognition
-    FACE_RECOGNITION_MODEL = 'hog'  # or 'cnn' for GPU
-    FACE_DETECTION_CONFIDENCE = 0.6
-    FACE_MATCHING_THRESHOLD = 0.6
+    FACE_RECOGNITION_MODEL = "hog"  # or "cnn" for GPU
+    FACE_RECOGNITION_TOLERANCE = 0.6
+    FACE_RECOGNITION_NUM_JITTERS = 1
     
     # API configuration
     API_TITLE = 'Doppleganger API'
@@ -91,15 +94,21 @@ class Config:
     OPENAPI_SWAGGER_UI_URL = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist/'
     
     # CORS
-    CORS_ORIGINS = ['*']
+    CORS_ORIGINS = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:5001',
+        'http://127.0.0.1:5001',
+        'https://doppleganger.us'
+    ]
     
     # Redis configuration (if using)
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
     # Email configuration (if using)
-    MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_SERVER = os.getenv('MAIL_SERVER')
     MAIL_PORT = int(os.getenv('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() in ['true', 'on', '1']
+    MAIL_USE_TLS = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
@@ -132,22 +141,20 @@ class Config:
     ENABLE_SOCIAL_LOGIN = False
     ENABLE_PAYMENTS = False
     
-    # Performance tuning
-    SQLALCHEMY_POOL_SIZE = 20
-    SQLALCHEMY_MAX_OVERFLOW = 5
-    SQLALCHEMY_POOL_TIMEOUT = 30
-    SQLALCHEMY_POOL_RECYCLE = 1800
+    # Admin settings
+    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
     
-    # Debug mode
-    DEBUG = os.getenv('FLASK_ENV') == 'development'
-    
-    # Testing
-    TESTING = False
-    TEST_DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/test_db'
+    # Storage settings
+    STORAGE_BUCKET = os.getenv('STORAGE_BUCKET', 'dopple-faces')
+    STORAGE_REGION = os.getenv('STORAGE_REGION', 'us-west-2')
 
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/dopple')
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
     CACHE_TYPE = 'simple'
     SESSION_COOKIE_SECURE = False
     
@@ -159,10 +166,10 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
-    DEBUG = True
-    DATABASE_URL = 'sqlite:///:memory:'
-    CACHE_TYPE = 'simple'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:postgres@localhost:5432/dopple_test'
+    WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
     
     # Testing-specific settings
     DATABASE_POOL_SIZE = 1
@@ -172,27 +179,14 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    TESTING = False
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    LOG_LEVEL = 'WARNING'
     
     # Production-specific settings
     CACHE_TYPE = 'filesystem'
     CACHE_DIR = os.getenv('CACHE_DIR', '/tmp/cache')
-    LOG_LEVEL = 'WARNING'
-    
-    # Database settings for production
-    DATABASE_URL = os.getenv('DATABASE_URL')  # Must be set in production
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL
-    SQLALCHEMY_POOL_SIZE = int(os.getenv('SQLALCHEMY_POOL_SIZE', '20'))
-    SQLALCHEMY_MAX_OVERFLOW = int(os.getenv('SQLALCHEMY_MAX_OVERFLOW', '10'))
-    SQLALCHEMY_POOL_TIMEOUT = int(os.getenv('SQLALCHEMY_POOL_TIMEOUT', '30'))
-    SQLALCHEMY_POOL_RECYCLE = int(os.getenv('SQLALCHEMY_POOL_RECYCLE', '1800'))
-    
-    # Security settings
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Strict'
-    
-    # Additional production settings
     PREFERRED_URL_SCHEME = 'https'
     SERVER_NAME = os.getenv('SERVER_NAME')
     APPLICATION_ROOT = os.getenv('APPLICATION_ROOT', '/')

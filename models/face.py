@@ -1,19 +1,16 @@
+"""Face model for DoppleGänger
+===========================
+
+This module defines the Face model and related database operations.
+"""
+
+import os
+import logging
 from datetime import datetime
 from flask import current_app
 from extensions import db
 import numpy as np
-import logging
 import re
-
-"""
-Face Model
-==========
-
-Defines the Face data model for storing face encodings, image paths, metadata, and relationships to users and matches.
-Handles face recognition-related logic.
-"""
-import os
-import random
 
 from flask import current_app, url_for
 
@@ -22,50 +19,94 @@ from utils.db.database import get_db_connection
 from utils.face.metadata import enhance_face_with_metadata, get_metadata_for_face
 from utils.face.recognition import extract_face_encoding, find_similar_faces
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Face(db.Model):
-    """Model for handling face data and matching."""
+    """Face model for storing face encodings and metadata."""
     __tablename__ = 'faces'
 
     id = db.Column(db.Integer, primary_key=True)
-    filename = db.Column(db.String(255), unique=True, nullable=False)
-    image_path = db.Column(db.String(255), nullable=False)
-    encoding = db.Column(db.LargeBinary)  # PostgreSQL BYTEA type
-    yearbook_year = db.Column(db.String(50))
-    school_name = db.Column(db.String(255))
-    page_number = db.Column(db.Integer)
-    decade = db.Column(db.String(50))
-    state = db.Column(db.String(100))
-    claimed_by_user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))
-    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    face_encoding = db.Column(db.LargeBinary, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship with User model
-    claimed_by = db.relationship('User', backref='claimed_faces')
+    # Relationships
+    user = db.relationship('User', backref=db.backref('faces', lazy=True))
 
-    def __init__(self, filename=None, image_path=None, **kwargs):
-        self.filename = filename
-        self.image_path = image_path
-        self.yearbook_year = kwargs.get("yearbook_year")
-        self.school_name = kwargs.get("school_name")
-        self.page_number = kwargs.get("page_number")
-        self.encoding = kwargs.get("encoding")
-        self.decade = kwargs.get("decade")
-        self.state = kwargs.get("state")
-        self.claimed_by_user_id = kwargs.get("claimed_by_user_id")
+    def __init__(self, user_id, face_encoding):
+        self.user_id = user_id
+        self.face_encoding = face_encoding
+
+    def to_dict(self):
+        """Convert face object to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    @classmethod
+    def create(cls, user_id, face_encoding):
+        """Create a new face record."""
+        try:
+            face = cls(user_id=user_id, face_encoding=face_encoding)
+            db.session.add(face)
+            db.session.commit()
+            return face
+        except Exception as e:
+            logger.error(f"Error creating face record: {str(e)}")
+            db.session.rollback()
+            raise
+
+    @classmethod
+    def get_by_id(cls, face_id):
+        """Get a face record by ID."""
+        try:
+            return cls.query.get(face_id)
+        except Exception as e:
+            logger.error(f"Error getting face by ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_user_id(cls, user_id):
+        """Get all face records for a user."""
+        try:
+            return cls.query.filter_by(user_id=user_id).all()
+        except Exception as e:
+            logger.error(f"Error getting faces by user ID: {str(e)}")
+            raise
+
+    def update(self, face_encoding=None):
+        """Update a face record."""
+        try:
+            if face_encoding is not None:
+                self.face_encoding = face_encoding
+            self.updated_at = datetime.utcnow()
+            db.session.commit()
+            return self
+        except Exception as e:
+            logger.error(f"Error updating face record: {str(e)}")
+            db.session.rollback()
+            raise
+
+    def delete(self):
+        """Delete a face record."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting face record: {str(e)}")
+            db.session.rollback()
+            raise
 
     @property
     def is_registered(self):
         """Checks if the face is registered to a specific user."""
-        return self.claimed_by_user_id is not None
-
-    @classmethod
-    def get_by_id(cls, face_id):
-        """Get a face by its ID."""
-        try:
-            return cls.query.get(face_id)
-        except Exception as e:
-            logging.error(f"Error fetching face by id: {e}")
-            return None
+        return self.user_id is not None
 
     @classmethod
     def get_by_filename(cls, filename):
@@ -141,33 +182,6 @@ class Face(db.Model):
             return ["1960s", "1970s", "1980s", "1990s", "2000s", "2010s"]
 
     @classmethod
-    def create(cls, filename, image_path, yearbook_year=None, school_name=None, page_number=None):
-        """Create a new face record."""
-        try:
-            from utils.face.recognition import extract_face_encoding
-            encoding = extract_face_encoding(image_path)
-
-            if encoding is None:
-                logging.error(f"Could not extract face encoding from {image_path}")
-                return None
-
-            face = cls(
-                filename=filename,
-                image_path=image_path,
-                yearbook_year=yearbook_year,
-                school_name=school_name,
-                page_number=page_number,
-                encoding=encoding.tobytes()
-            )
-            db.session.add(face)
-            db.session.commit()
-            return face
-        except Exception as e:
-            db.session.rollback()
-            logging.error(f"Error creating face record: {e}")
-            return None
-
-    @classmethod
     def search(cls, criteria=None, limit=10):
         """Search for faces based on criteria."""
         try:
@@ -188,7 +202,7 @@ class Face(db.Model):
     def get_user_matches(cls, user_id, limit=50):
         """Get faces claimed by a specific user."""
         try:
-            return cls.query.filter_by(claimed_by_user_id=user_id).limit(limit).all()
+            return cls.query.filter_by(user_id=user_id).limit(limit).all()
         except Exception as e:
             logging.error(f"Error getting user matches: {e}")
             return []
@@ -203,39 +217,9 @@ class Face(db.Model):
             logging.error(f"Error finding face matches: {e}")
             return []
 
-    def update(self, **kwargs):
-        """Update face record with new data."""
-        try:
-            for key, value in kwargs.items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            logging.error(f"Error updating face record: {e}")
-            return False
-
-    def delete(self):
-        """Delete face record."""
-        try:
-            db.session.delete(self)
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            logging.error(f"Error deleting face record: {e}")
-            return False
-
-    def is_claimed(self, refresh=False):
-        """Check if face is claimed by a user."""
-        if refresh:
-            db.session.refresh(self)
-        return self.claimed_by_user_id is not None
-
     def get_claimed_profile(self):
         """Get the claimed profile for this face."""
-        if not self.is_claimed():
+        if not self.is_registered:
             return None
         return ClaimedProfile.query.filter_by(face_id=self.id).first()
 
@@ -243,18 +227,13 @@ class Face(db.Model):
         """Convert face record to dictionary."""
         data = {
             'id': self.id,
-            'filename': self.filename,
-            'image_path': self.image_path,
-            'yearbook_year': self.yearbook_year,
-            'school_name': self.school_name,
-            'page_number': self.page_number,
-            'decade': self.decade,
-            'state': self.state,
+            'user_id': self.user_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'is_claimed': self.is_claimed()
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'is_registered': self.is_registered
         }
         if include_private:
-            data['claimed_by_user_id'] = self.claimed_by_user_id
+            data['face_encoding'] = self.face_encoding.hex()
         return data
 
     @classmethod

@@ -1,173 +1,297 @@
-"""Post Models
-============
+"""Post models for DoppleGänger
+===========================
 
-Defines models for social media posts and related operations.
+This module defines the post models and related database operations.
 """
 
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-
 from flask import current_app
-from flask_sqlalchemy import SQLAlchemy
-from models.user import User
 from extensions import db
-from utils.template_utils import get_image_path
-from utils.image_paths import normalize_extracted_face_path
-from utils.serializers import serialize_match_card
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Post(db.Model):
-    """Model for social media posts."""
+    """Post model for storing user posts."""
     __tablename__ = 'posts'
-    __table_args__ = {'extend_existing': True}  # Allow table to be redefined
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text, nullable=False)
+    content = db.Column(db.Text)
+    visibility = db.Column(db.String(20), default='public')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_match_post = db.Column(db.Boolean, default=False)
-    face_filename = db.Column(db.String(255))
 
-    # Relationships with back_populates to avoid conflicts
-    user = db.relationship('User', back_populates='posts', overlaps="post_author,user_posts")
-    comments = db.relationship('Comment', back_populates='post', lazy=True, cascade='all, delete-orphan')
-    likes = db.relationship('Like', back_populates='post', lazy=True, cascade='all, delete-orphan', overlaps="post_ref,post_likes")
+    # Relationships
+    user = db.relationship('User', backref='posts')
+    images = db.relationship('PostImage', backref='post', cascade='all, delete-orphan')
+    reactions = db.relationship('PostReaction', backref='post', cascade='all, delete-orphan')
+    comments = db.relationship('Comment', backref='post', cascade='all, delete-orphan')
 
-    def __repr__(self):
-        return f'<Post {self.id}>'
+    def __init__(self, user_id, content=None, visibility='public'):
+        self.user_id = user_id
+        self.content = content
+        self.visibility = visibility
 
-    @property
-    def likes_count(self):
-        """Get the number of likes for this post."""
-        return len(self.likes) if self.likes else 0
+    def to_dict(self):
+        """Convert post to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'content': self.content,
+            'visibility': self.visibility,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'images': [image.to_dict() for image in self.images],
+            'reactions': [reaction.to_dict() for reaction in self.reactions],
+            'comments': [comment.to_dict() for comment in self.comments]
+        }
 
     @classmethod
-    def get_by_id(cls, post_id: int) -> Optional['Post']:
-        """Get a post by its ID."""
-        return cls.query.get(post_id)
-
-    @classmethod
-    def create(cls, user_id: int, content: str, face_filename: str = None, is_match_post: bool = False) -> Optional['Post']:
+    def create(cls, user_id, content=None, visibility='public'):
         """Create a new post."""
         try:
             post = cls(
                 user_id=user_id,
                 content=content,
-                face_filename=face_filename,
-                is_match_post=is_match_post
+                visibility=visibility
             )
             db.session.add(post)
             db.session.commit()
             return post
         except Exception as e:
-            logging.error(f"Error creating post: {e}", exc_info=True)
+            logger.error(f"Error creating post: {str(e)}")
             db.session.rollback()
-            return None
+            raise
 
     @classmethod
-    def get_feed(cls, limit: int = 20, offset: int = 0) -> List['Post']:
-        """Get the latest posts for the main feed."""
+    def get_by_id(cls, post_id):
+        """Get a post by ID."""
         try:
-            return cls.query.order_by(cls.created_at.desc()).limit(limit).offset(offset).all()
+            return cls.query.get(post_id)
         except Exception as e:
-            logging.error(f"Error fetching feed: {e}")
-            return []
+            logger.error(f"Error getting post by ID: {str(e)}")
+            raise
 
     @classmethod
-    def get_user_posts(cls, user_id: int, limit: int = 20, offset: int = 0) -> List['Post']:
-        """Get posts by a specific user."""
+    def get_by_user_id(cls, user_id, limit=20):
+        """Get posts for a user."""
         try:
-            return cls.query.filter_by(user_id=user_id).order_by(cls.created_at.desc()).limit(limit).offset(offset).all()
+            return cls.query.filter_by(user_id=user_id).order_by(
+                cls.created_at.desc()
+            ).limit(limit).all()
         except Exception as e:
-            logging.error(f"Error fetching user posts: {e}")
-            return []
+            logger.error(f"Error getting posts by user ID: {str(e)}")
+            raise
 
-    def update(self, content: str) -> bool:
-        """Update the post content."""
+    def update(self, **kwargs):
+        """Update a post."""
         try:
-            self.content = content
+            for key, value in kwargs.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+            self.updated_at = datetime.utcnow()
             db.session.commit()
-            return True
+            return self
         except Exception as e:
-            logging.error(f"Error updating post: {e}")
+            logger.error(f"Error updating post: {str(e)}")
             db.session.rollback()
-            return False
+            raise
 
-    def delete(self) -> bool:
-        """Delete the post and associated data."""
+    def delete(self):
+        """Delete a post."""
         try:
             db.session.delete(self)
             db.session.commit()
-            return True
         except Exception as e:
-            logging.error(f"Error deleting post: {e}")
+            logger.error(f"Error deleting post: {str(e)}")
             db.session.rollback()
-            return False
+            raise
 
-    def to_dict(self, user_id=None, include_comments=True):
-        """Convert post to dictionary."""
-        from models.face import Face
-        # User face image (profile image)
-        user_face_image_url = self.user.get_profile_image_url() if self.user else '/static/images/default_profile.svg'
+class PostImage(db.Model):
+    """Post image model for storing post images."""
+    __tablename__ = 'post_images'
 
-        # Sanitize face_filename by stripping query string if present
-        face_filename_clean = self.face_filename.split('?')[0] if self.face_filename and '?' in self.face_filename else self.face_filename
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=False)
+    caption = db.Column(db.String(255))
+    order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-        # Match face image (from faces table)
-        match_face_image_url = '/static/images/default_profile.svg'
-        match_face_id = None
-        logger = logging.getLogger("Post.to_dict")
-        logger.debug(f"Post {self.id}: face_filename={self.face_filename}")
-        if self.face_filename:
-            face = Face.get_by_filename(face_filename_clean)
-            if face and face.filename:
-                match_face_image_url = f"/static/extracted_faces/{face.filename}"
-                match_face_id = face.id
-                logger.info(f"Post {self.id}: Found face record for filename '{face_filename_clean}', using normalized URL: {match_face_image_url}")
-            else:
-                logger.warning(f"Post {self.id}: No face record found for filename '{face_filename_clean}', using normalized fallback URL: /static/default_profile.png")
-        logger.debug(f"Post {self.id}: Final match_face_image_url: {match_face_image_url}")
+    def __init__(self, post_id, image_url, caption=None, order=0):
+        self.post_id = post_id
+        self.image_url = image_url
+        self.caption = caption
+        self.order = order
 
-        # --- Unified match card ---
-        match_card = None
-        if self.face_filename:
-            face = Face.get_by_filename(face_filename_clean)
-            if face:
-                match_card = serialize_match_card(face, None, getattr(self, 'similarity', None))
-            else:
-                # fallback: minimal card with filename
-                match_card = {
-                    "id": None,
-                    "image": match_face_image_url,
-                    "username": face_filename_clean,
-                    "label": "UNCLAIMED PROFILE",
-                    "similarity": None,
-                    "stateDecade": ""
-                }
-
-        d = {
+    def to_dict(self):
+        """Convert image to dictionary."""
+        return {
             'id': self.id,
-            'user_id': self.user_id,
-            'content': self.content,
-            'created_at': self.created_at.isoformat() if hasattr(self.created_at, 'isoformat') else str(self.created_at),
-            'is_match_post': self.is_match_post,
-            'face_filename': self.face_filename,
-            'likes_count': getattr(self, 'likes_count', 0),
-            'user_has_liked': any(like.user_id == user_id for like in self.likes) if user_id and self.likes else False,
-            'user': self.user.to_dict() if self.user else {},
-            'user_face_image_url': user_face_image_url,
-            'match_face_image_url': match_face_image_url,
-            'match_face_id': match_face_id,
-            'comments': [c.to_dict() for c in self.comments] if include_comments and hasattr(self, 'comments') else [],
-            'match_card': match_card
+            'post_id': self.post_id,
+            'image_url': self.image_url,
+            'caption': self.caption,
+            'order': self.order,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-        return d
 
-class PostImage:
-    """Model for post images."""
-    pass
+    @classmethod
+    def create(cls, post_id, image_url, caption=None, order=0):
+        """Create a new post image."""
+        try:
+            image = cls(
+                post_id=post_id,
+                image_url=image_url,
+                caption=caption,
+                order=order
+            )
+            db.session.add(image)
+            db.session.commit()
+            return image
+        except Exception as e:
+            logger.error(f"Error creating post image: {str(e)}")
+            db.session.rollback()
+            raise
 
-class PostReaction:
-    """Model for post reactions."""
-    pass 
+    @classmethod
+    def get_by_id(cls, image_id):
+        """Get a post image by ID."""
+        try:
+            return cls.query.get(image_id)
+        except Exception as e:
+            logger.error(f"Error getting post image by ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_post_id(cls, post_id):
+        """Get images for a post."""
+        try:
+            return cls.query.filter_by(post_id=post_id).order_by(cls.order).all()
+        except Exception as e:
+            logger.error(f"Error getting post images by post ID: {str(e)}")
+            raise
+
+    def update(self, **kwargs):
+        """Update a post image."""
+        try:
+            for key, value in kwargs.items():
+                if hasattr(self, key):
+                    setattr(self, key, value)
+            self.updated_at = datetime.utcnow()
+            db.session.commit()
+            return self
+        except Exception as e:
+            logger.error(f"Error updating post image: {str(e)}")
+            db.session.rollback()
+            raise
+
+    def delete(self):
+        """Delete a post image."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting post image: {str(e)}")
+            db.session.rollback()
+            raise
+
+class PostReaction(db.Model):
+    """Post reaction model for storing post reactions."""
+    __tablename__ = 'post_reactions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reaction_type = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='post_reactions')
+
+    def __init__(self, post_id, user_id, reaction_type):
+        self.post_id = post_id
+        self.user_id = user_id
+        self.reaction_type = reaction_type
+
+    def to_dict(self):
+        """Convert reaction to dictionary."""
+        return {
+            'id': self.id,
+            'post_id': self.post_id,
+            'user_id': self.user_id,
+            'reaction_type': self.reaction_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    @classmethod
+    def create(cls, post_id, user_id, reaction_type):
+        """Create a new post reaction."""
+        try:
+            reaction = cls(
+                post_id=post_id,
+                user_id=user_id,
+                reaction_type=reaction_type
+            )
+            db.session.add(reaction)
+            db.session.commit()
+            return reaction
+        except Exception as e:
+            logger.error(f"Error creating post reaction: {str(e)}")
+            db.session.rollback()
+            raise
+
+    @classmethod
+    def get_by_id(cls, reaction_id):
+        """Get a post reaction by ID."""
+        try:
+            return cls.query.get(reaction_id)
+        except Exception as e:
+            logger.error(f"Error getting post reaction by ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_post_id(cls, post_id):
+        """Get reactions for a post."""
+        try:
+            return cls.query.filter_by(post_id=post_id).all()
+        except Exception as e:
+            logger.error(f"Error getting post reactions by post ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_user_id(cls, user_id):
+        """Get reactions by a user."""
+        try:
+            return cls.query.filter_by(user_id=user_id).all()
+        except Exception as e:
+            logger.error(f"Error getting post reactions by user ID: {str(e)}")
+            raise
+
+    def update(self, reaction_type):
+        """Update a post reaction."""
+        try:
+            self.reaction_type = reaction_type
+            self.updated_at = datetime.utcnow()
+            db.session.commit()
+            return self
+        except Exception as e:
+            logger.error(f"Error updating post reaction: {str(e)}")
+            db.session.rollback()
+            raise
+
+    def delete(self):
+        """Delete a post reaction."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting post reaction: {str(e)}")
+            db.session.rollback()
+            raise 

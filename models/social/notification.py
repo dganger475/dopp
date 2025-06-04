@@ -1,205 +1,142 @@
-"""Notification Models
-===================
+"""Notification models for DoppleGänger
+===========================
 
-Defines models for social media notifications and related operations.
+This module defines the notification models and related database operations.
 """
 
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from flask import current_app
+from extensions import db
 
-from models.user import User
-from utils.db.database import get_users_db_connection
-from utils.database import get_db_connection
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class Notification:
-    """Model for user notifications."""
+class Notification(db.Model):
+    """Notification model for storing user notifications."""
+    __tablename__ = 'notifications'
 
-    def __init__(self, id=None, user_id=None, notification_type=None, content=None, created_at=None, read_at=None):
-        self.id = id
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    notification_type = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='notifications_received')
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='notifications_sent')
+
+    def __init__(self, user_id, notification_type, content=None, sender_id=None, is_read=False):
         self.user_id = user_id
         self.notification_type = notification_type
         self.content = content
-        self.created_at = created_at
-        self.read_at = read_at
+        self.sender_id = sender_id
+        self.is_read = is_read
+
+    def to_dict(self):
+        """Convert notification to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'sender_id': self.sender_id,
+            'notification_type': self.notification_type,
+            'content': self.content,
+            'is_read': self.is_read,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'sender': self.sender.to_dict() if self.sender else None
+        }
 
     @classmethod
-    def get_for_user(cls, user_id: int, limit: int = 20, offset: int = 0) -> List['Notification']:
-        """Get notifications for a user."""
-        conn = get_users_db_connection()
-        if not conn:
-            return []
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM notifications
-                WHERE user_id = ?
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset)
-            )
-            return [cls(**dict(row)) for row in cursor.fetchall()]
-        except Exception as e:
-            logging.error(f"Error fetching notifications: {e}")
-            return []
-        finally:
-            conn.close()
-
-    @classmethod
-    def create(cls, user_id: int, notification_type: str, content: str) -> Optional['Notification']:
+    def create(cls, user_id, notification_type, content=None, sender_id=None, is_read=False):
         """Create a new notification."""
-        conn = get_db_connection()
         try:
-            cursor = conn.cursor()
-            now = datetime.utcnow()
-            cursor.execute(
-                """
-                INSERT INTO notifications (user_id, notification_type, content, created_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (user_id, notification_type, content, now)
-            )
-            conn.commit()
-            return cls(
-                id=cursor.lastrowid,
+            notification = cls(
                 user_id=user_id,
                 notification_type=notification_type,
                 content=content,
-                created_at=now
+                sender_id=sender_id,
+                is_read=is_read
             )
+            db.session.add(notification)
+            db.session.commit()
+            return notification
         except Exception as e:
-            logging.error(f"Error creating notification: {e}")
-            if conn:
-                conn.rollback()
-            return None
-        finally:
-            conn.close()
+            logger.error(f"Error creating notification: {str(e)}")
+            db.session.rollback()
+            raise
 
     @classmethod
-    def get_by_id(cls, notification_id: int) -> Optional['Notification']:
-        """Get a notification by its ID."""
-        conn = get_db_connection()
-        if not conn:
-            return None
+    def get_by_id(cls, notification_id):
+        """Get a notification by ID."""
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM notifications WHERE id = ?", (notification_id,))
-            row = cursor.fetchone()
-            if row:
-                return cls(
-                    id=row[0],
-                    user_id=row[1],
-                    notification_type=row[2],
-                    content=row[3],
-                    created_at=row[4],
-                    read_at=row[5]
-                )
-            return None
+            return cls.query.get(notification_id)
         except Exception as e:
-            logging.error(f"Error fetching notification by id: {e}")
-            return None
-        finally:
-            conn.close()
+            logger.error(f"Error getting notification by ID: {str(e)}")
+            raise
 
     @classmethod
-    def get_by_user_id(cls, user_id: int, limit: int = 20, offset: int = 0) -> List['Notification']:
-        """Get all notifications for a user."""
-        conn = get_db_connection()
-        if not conn:
-            return []
+    def get_by_user_id(cls, user_id, limit=20):
+        """Get notifications for a user."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT * FROM notifications
-                WHERE user_id = ?
-                ORDER BY created_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset)
-            )
-            return [cls(**dict(row)) for row in cursor.fetchall()]
+            return cls.query.filter_by(user_id=user_id).order_by(
+                cls.created_at.desc()
+            ).limit(limit).all()
         except Exception as e:
-            logging.error(f"Error fetching notifications: {e}")
-            return []
-        finally:
-            conn.close()
+            logger.error(f"Error getting notifications by user ID: {str(e)}")
+            raise
 
     @classmethod
-    def get_unread_count(cls, user_id: int) -> int:
-        """Get the count of unread notifications for a user."""
-        conn = get_db_connection()
-        if not conn:
-            return 0
+    def get_unread_count(cls, user_id):
+        """Get the number of unread notifications for a user."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT COUNT(*) FROM notifications
-                WHERE user_id = ? AND read_at IS NULL
-                """,
-                (user_id,)
-            )
-            return cursor.fetchone()[0]
+            return cls.query.filter_by(
+                user_id=user_id,
+                is_read=False
+            ).count()
         except Exception as e:
-            logging.error(f"Error fetching unread notification count: {e}")
-            return 0
-        finally:
-            conn.close()
+            logger.error(f"Error getting unread notification count: {str(e)}")
+            raise
 
-    def mark_as_read(self) -> bool:
-        """Mark this notification as read."""
-        if not self.id:
-            return False
-        conn = get_db_connection()
-        if not conn:
-            return False
+    def mark_as_read(self):
+        """Mark a notification as read."""
         try:
-            cursor = conn.cursor()
-            now = datetime.utcnow()
-            cursor.execute(
-                "UPDATE notifications SET read_at = ? WHERE id = ?",
-                (now, self.id)
-            )
-            conn.commit()
-            self.read_at = now
-            return True
+            self.is_read = True
+            self.updated_at = datetime.utcnow()
+            db.session.commit()
+            return self
         except Exception as e:
-            logging.error(f"Error marking notification as read: {e}")
-            if conn:
-                conn.rollback()
-            return False
-        finally:
-            conn.close()
+            logger.error(f"Error marking notification as read: {str(e)}")
+            db.session.rollback()
+            raise
 
-    def delete(self) -> bool:
-        """Delete this notification."""
-        if not self.id:
-            return False
-        conn = get_db_connection()
-        if not conn:
-            return False
+    @classmethod
+    def mark_all_as_read(cls, user_id):
+        """Mark all notifications as read for a user."""
         try:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM notifications WHERE id = ?", (self.id,))
-            conn.commit()
-            return True
+            cls.query.filter_by(
+                user_id=user_id,
+                is_read=False
+            ).update({
+                'is_read': True,
+                'updated_at': datetime.utcnow()
+            })
+            db.session.commit()
         except Exception as e:
-            logging.error(f"Error deleting notification: {e}")
-            if conn:
-                conn.rollback()
-            return False
-        finally:
-            conn.close()
+            logger.error(f"Error marking all notifications as read: {str(e)}")
+            db.session.rollback()
+            raise
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "notification_type": self.notification_type,
-            "content": self.content,
-            "created_at": self.created_at.isoformat(),
-            "read_at": self.read_at.isoformat() if self.read_at else None
-        } 
+    def delete(self):
+        """Delete a notification."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting notification: {str(e)}")
+            db.session.rollback()
+            raise 

@@ -1,274 +1,179 @@
-"""Feed Models
-============
+"""Feed models for DoppleGänger
+===========================
 
-Defines models for social media feeds and related operations.
+This module defines the feed models and related database operations.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
+from flask import current_app
+from extensions import db
 
-from models.social.post import Post
-from models.user import User
-from utils.db.database import get_users_db_connection
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class Feed:
-    """Model for handling social media feeds."""
+class Feed(db.Model):
+    """Feed model for storing user feeds."""
+    __tablename__ = 'feeds'
 
-    @staticmethod
-    def get_feed(user_id: Optional[int] = None, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get the social feed for a user.
-        
-        Args:
-            user_id: Optional user ID to get personalized feed
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content_type = db.Column(db.String(50), nullable=False)
+    content_id = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='feeds')
+
+    def __init__(self, user_id, content_type, content_id):
+        self.user_id = user_id
+        self.content_type = content_type
+        self.content_id = content_id
+
+    def to_dict(self):
+        """Convert feed to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'content_type': self.content_type,
+            'content_id': self.content_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    @classmethod
+    def create(cls, user_id, content_type, content_id):
+        """Create a new feed item."""
         try:
-            # Get posts from database
-            posts = Post.get_feed(limit=limit, offset=offset)
-            
-            # Convert posts to dictionaries with user data
-            return [
-                post.to_dict(include_user=True, include_comments=True, user_id=user_id)
-                for post in posts
-            ]
-            
-        except Exception as e:
-            logging.error(f"Error getting feed: {e}")
-            return []
-
-    @staticmethod
-    def get_user_feed(user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get posts from a specific user's feed.
-        
-        Args:
-            user_id: User ID to get posts from
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
-        try:
-            # Get user's posts
-            posts = Post.get_user_posts(user_id, limit=limit, offset=offset)
-            
-            # Convert posts to dictionaries with user data
-            return [
-                post.to_dict(include_user=True, include_comments=True, user_id=user_id)
-                for post in posts
-            ]
-            
-        except Exception as e:
-            logging.error(f"Error getting user feed: {e}")
-            return []
-
-    @staticmethod
-    def get_match_feed(user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get posts about matches for a user.
-        
-        Args:
-            user_id: User ID to get match posts for
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
-        conn = get_users_db_connection()
-        if not conn:
-            return []
-
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT p.* FROM posts p
-                WHERE p.is_match_post = 1
-                AND (
-                    p.user_id = ?
-                    OR p.id IN (
-                        SELECT post_id 
-                        FROM post_mentions 
-                        WHERE mentioned_user_id = ?
-                    )
-                )
-                ORDER BY p.created_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, user_id, limit, offset)
+            feed = cls(
+                user_id=user_id,
+                content_type=content_type,
+                content_id=content_id
             )
-
-            posts = [Post(**dict(post_data)) for post_data in cursor.fetchall()]
-            return [
-                post.to_dict(include_user=True, include_comments=True, user_id=user_id)
-                for post in posts
-            ]
-
+            db.session.add(feed)
+            db.session.commit()
+            return feed
         except Exception as e:
-            logging.error(f"Error getting match feed: {e}")
-            return []
-        finally:
-            conn.close()
+            logger.error(f"Error creating feed item: {str(e)}")
+            db.session.rollback()
+            raise
 
-    @staticmethod
-    def get_trending_feed(limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get trending posts based on engagement.
-        
-        Args:
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
-        conn = get_users_db_connection()
-        if not conn:
-            return []
-
+    @classmethod
+    def get_by_id(cls, feed_id):
+        """Get a feed item by ID."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT p.*, 
-                    COUNT(DISTINCT l.id) as like_count,
-                    COUNT(DISTINCT c.id) as comment_count,
-                    COUNT(DISTINCT r.id) as reaction_count
-                FROM posts p
-                LEFT JOIN likes l ON p.id = l.post_id
-                LEFT JOIN comments c ON p.id = c.post_id
-                LEFT JOIN reactions r ON p.id = r.post_id
-                WHERE p.created_at >= datetime('now', '-7 days')
-                GROUP BY p.id
-                ORDER BY (like_count + comment_count + reaction_count) DESC
-                LIMIT ? OFFSET ?
-                """,
-                (limit, offset)
-            )
-
-            posts = [Post(**dict(post_data)) for post_data in cursor.fetchall()]
-            return [
-                post.to_dict(include_user=True, include_comments=True)
-                for post in posts
-            ]
-
+            return cls.query.get(feed_id)
         except Exception as e:
-            logging.error(f"Error getting trending feed: {e}")
-            return []
-        finally:
-            conn.close()
+            logger.error(f"Error getting feed item by ID: {str(e)}")
+            raise
 
-    @staticmethod
-    def get_recommended_feed(user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get recommended posts for a user based on their interests and activity.
-        
-        Args:
-            user_id: User ID to get recommendations for
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
-        conn = get_users_db_connection()
-        if not conn:
-            return []
-
+    @classmethod
+    def get_by_user_id(cls, user_id, limit=20):
+        """Get feed items for a user."""
         try:
-            # Get user's interests and activity
-            cursor = conn.cursor()
-            
-            # Get posts from users the current user follows
-            cursor.execute(
-                """
-                SELECT DISTINCT p.*
-                FROM posts p
-                JOIN follows f ON p.user_id = f.followed_id
-                WHERE f.follower_id = ?
-                AND p.created_at >= datetime('now', '-30 days')
-                ORDER BY p.created_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset)
-            )
-
-            posts = [Post(**dict(post_data)) for post_data in cursor.fetchall()]
-            
-            # If we don't have enough posts, get some trending posts
-            if len(posts) < limit:
-                remaining = limit - len(posts)
-                cursor.execute(
-                    """
-                    SELECT p.*, 
-                        COUNT(DISTINCT l.id) as like_count,
-                        COUNT(DISTINCT c.id) as comment_count
-                    FROM posts p
-                    LEFT JOIN likes l ON p.id = l.post_id
-                    LEFT JOIN comments c ON p.id = c.post_id
-                    WHERE p.user_id != ?
-                    AND p.created_at >= datetime('now', '-7 days')
-                    GROUP BY p.id
-                    ORDER BY (like_count + comment_count) DESC
-                    LIMIT ?
-                    """,
-                    (user_id, remaining)
-                )
-                
-                additional_posts = [Post(**dict(post_data)) for post_data in cursor.fetchall()]
-                posts.extend(additional_posts)
-
-            return [
-                post.to_dict(include_user=True, include_comments=True, user_id=user_id)
-                for post in posts
-            ]
-
+            return cls.query.filter_by(user_id=user_id).order_by(
+                cls.created_at.desc()
+            ).limit(limit).all()
         except Exception as e:
-            logging.error(f"Error getting recommended feed: {e}")
-            return []
-        finally:
-            conn.close()
+            logger.error(f"Error getting feed items by user ID: {str(e)}")
+            raise
 
-    @staticmethod
-    def get_mentions_feed(user_id: int, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get posts that mention a user.
-        
-        Args:
-            user_id: User ID to get mentions for
-            limit: Maximum number of posts to return
-            offset: Number of posts to skip
-            
-        Returns:
-            List of post dictionaries with user data
-        """
-        conn = get_users_db_connection()
-        if not conn:
-            return []
-
+    @classmethod
+    def get_recent_feed(cls, user_id, limit=20):
+        """Get recent feed items for a user."""
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT p.* FROM posts p
-                JOIN post_mentions pm ON p.id = pm.post_id
-                WHERE pm.mentioned_user_id = ?
-                ORDER BY p.created_at DESC
-                LIMIT ? OFFSET ?
-                """,
-                (user_id, limit, offset)
-            )
-
-            posts = [Post(**dict(post_data)) for post_data in cursor.fetchall()]
-            return [
-                post.to_dict(include_user=True, include_comments=True, user_id=user_id)
-                for post in posts
-            ]
-
+            return cls.query.filter_by(user_id=user_id).order_by(
+                cls.created_at.desc()
+            ).limit(limit).all()
         except Exception as e:
-            logging.error(f"Error getting mentions feed: {e}")
-            return []
-        finally:
-            conn.close() 
+            logger.error(f"Error getting recent feed items: {str(e)}")
+            raise
+
+    def delete(self):
+        """Delete a feed item."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting feed item: {str(e)}")
+            db.session.rollback()
+            raise
+
+class FeedItem(db.Model):
+    """Feed item model for storing feed item details."""
+    __tablename__ = 'feed_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    feed_id = db.Column(db.Integer, db.ForeignKey('feeds.id'), nullable=False)
+    item_type = db.Column(db.String(50), nullable=False)
+    item_id = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    feed = db.relationship('Feed', backref='items')
+
+    def __init__(self, feed_id, item_type, item_id):
+        self.feed_id = feed_id
+        self.item_type = item_type
+        self.item_id = item_id
+
+    def to_dict(self):
+        """Convert feed item to dictionary."""
+        return {
+            'id': self.id,
+            'feed_id': self.feed_id,
+            'item_type': self.item_type,
+            'item_id': self.item_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    @classmethod
+    def create(cls, feed_id, item_type, item_id):
+        """Create a new feed item."""
+        try:
+            item = cls(
+                feed_id=feed_id,
+                item_type=item_type,
+                item_id=item_id
+            )
+            db.session.add(item)
+            db.session.commit()
+            return item
+        except Exception as e:
+            logger.error(f"Error creating feed item: {str(e)}")
+            db.session.rollback()
+            raise
+
+    @classmethod
+    def get_by_id(cls, item_id):
+        """Get a feed item by ID."""
+        try:
+            return cls.query.get(item_id)
+        except Exception as e:
+            logger.error(f"Error getting feed item by ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_feed_id(cls, feed_id):
+        """Get feed items for a feed."""
+        try:
+            return cls.query.filter_by(feed_id=feed_id).order_by(
+                cls.created_at.desc()
+            ).all()
+        except Exception as e:
+            logger.error(f"Error getting feed items by feed ID: {str(e)}")
+            raise
+
+    def delete(self):
+        """Delete a feed item."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting feed item: {str(e)}")
+            db.session.rollback()
+            raise 

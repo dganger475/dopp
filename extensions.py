@@ -12,6 +12,7 @@ from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask import session, current_app
+import logging
 
 # Create extension instances without initializing them
 cache = Cache()

@@ -9,76 +9,145 @@ Handles logic for adding, removing, and querying user matches.
 import logging
 import random
 from datetime import datetime
-
-from flask import session
+from flask import current_app
+from extensions import db
 
 from models.face import Face
 from models.social import ClaimedProfile
 from utils.db.database import get_users_db_connection
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class UserMatch:
-    """Model for handling user-added matches and their visibility settings."""
+class UserMatch(db.Model):
+    """User match model for storing user matches."""
+    __tablename__ = 'user_matches'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    match_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    match_score = db.Column(db.Float, nullable=False)
+    is_confirmed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref='matches_given')
+    match = db.relationship('User', foreign_keys=[match_id], backref='matches_received')
+
+    def __init__(self, user_id, match_id, match_score, is_confirmed=False):
+        self.user_id = user_id
+        self.match_id = match_id
+        self.match_score = match_score
+        self.is_confirmed = is_confirmed
+
+    def to_dict(self):
+        """Convert match to dictionary."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'match_id': self.match_id,
+            'match_score': self.match_score,
+            'is_confirmed': self.is_confirmed,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
 
     @classmethod
-    def get_by_match_id(cls, match_id):
-        """Get a match by its ID instead of filename for privacy."""
-        conn = get_users_db_connection()
-        if not conn:
-            return None
-
+    def create(cls, user_id, match_id, match_score, is_confirmed=False):
+        """Create a new match."""
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM user_matches WHERE id = ?", (match_id,))
-            match_data = cursor.fetchone()
-
-            if match_data:
-                return cls(**dict(match_data))
-            return None
-
+            match = cls(
+                user_id=user_id,
+                match_id=match_id,
+                match_score=match_score,
+                is_confirmed=is_confirmed
+            )
+            db.session.add(match)
+            db.session.commit()
+            return match
         except Exception as e:
-            logging.error(f"Error fetching user match by match_id: {e}")
-            return None
-        finally:
-            if conn:
-                conn.close()
-
-    def __init__(
-        self, id=None, user_id=None, match_filename=None, face_id=None, **kwargs
-    ):
-        self.id = id
-        self.user_id = user_id
-        self.match_filename = match_filename
-        self.face_id = face_id
-        self.is_visible = kwargs.get("is_visible", 1)
-        self.privacy_level = kwargs.get("privacy_level", "public")
-        self.similarity = kwargs.get("similarity", None)  # Similarity percentage
-        self.added_at = kwargs.get(
-            "added_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
-        self._match_details = None  # Cached match details
+            logger.error(f"Error creating match: {str(e)}")
+            db.session.rollback()
+            raise
 
     @classmethod
     def get_by_id(cls, match_id):
-        """Get a user match by its ID."""
-        conn = get_users_db_connection()
-        if not conn:
-            return None
-
+        """Get a match by ID."""
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM user_matches WHERE id = ?", (match_id,))
-            match_data = cursor.fetchone()
-
-            if match_data:
-                return cls(**dict(match_data))
-            return None
-
+            return cls.query.get(match_id)
         except Exception as e:
-            logging.error(f"Error fetching user match by id: {e}")
-            return None
-        finally:
-            conn.close()
+            logger.error(f"Error getting match by ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_user_id(cls, user_id, limit=20):
+        """Get matches for a user."""
+        try:
+            return cls.query.filter_by(user_id=user_id).order_by(
+                cls.match_score.desc()
+            ).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Error getting matches by user ID: {str(e)}")
+            raise
+
+    @classmethod
+    def get_by_match_id(cls, match_id, limit=20):
+        """Get matches where user is the match."""
+        try:
+            return cls.query.filter_by(match_id=match_id).order_by(
+                cls.match_score.desc()
+            ).limit(limit).all()
+        except Exception as e:
+            logger.error(f"Error getting matches by match ID: {str(e)}")
+            raise
+
+    def confirm(self):
+        """Confirm a match."""
+        try:
+            self.is_confirmed = True
+            self.updated_at = datetime.utcnow()
+            db.session.commit()
+            return self
+        except Exception as e:
+            logger.error(f"Error confirming match: {str(e)}")
+            db.session.rollback()
+            raise
+
+    def delete(self):
+        """Delete a match."""
+        try:
+            db.session.delete(self)
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting match: {str(e)}")
+            db.session.rollback()
+            raise
+
+    @classmethod
+    def get_confirmed_matches(cls, user_id):
+        """Get confirmed matches for a user."""
+        try:
+            return cls.query.filter_by(
+                user_id=user_id,
+                is_confirmed=True
+            ).order_by(cls.match_score.desc()).all()
+        except Exception as e:
+            logger.error(f"Error getting confirmed matches: {str(e)}")
+            raise
+
+    @classmethod
+    def get_pending_matches(cls, user_id):
+        """Get pending matches for a user."""
+        try:
+            return cls.query.filter_by(
+                user_id=user_id,
+                is_confirmed=False
+            ).order_by(cls.match_score.desc()).all()
+        except Exception as e:
+            logger.error(f"Error getting pending matches: {str(e)}")
+            raise
 
     @classmethod
     def get_by_user_and_filename(cls, user_id, match_filename):
