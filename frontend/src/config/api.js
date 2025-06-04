@@ -1,9 +1,5 @@
 // Base URL for API requests - dynamically determined
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
-  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:5001' // Use local backend in development
-    : 'https://dopple503.fly.dev' // Use Fly.io backend in production
-);
+const API_BASE_URL = 'https://dopple503.fly.dev';
 
 // Helper function to build API URLs with proper handling
 export const getApiUrl = (path) => {
