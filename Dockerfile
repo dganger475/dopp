@@ -44,6 +44,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir cmake==3.25.0 && \
     pip install --no-cache-dir wheel && \
     pip install --no-cache-dir setuptools && \
+    pip install --no-cache-dir numpy && \
+    pip install --no-cache-dir dlib==19.22.0 && \
+    pip install --no-cache-dir face-recognition==1.3.0 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
