@@ -13,7 +13,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
-from config import get_settings
+from config import get_config
 from sqlalchemy.pool import QueuePool
 import urllib.parse
 from sqlalchemy.exc import SQLAlchemyError
@@ -35,7 +35,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
 CONNECTION_TIMEOUT = 30  # seconds
 
-settings = get_settings()
+settings = get_config()
 
 # Create SQLAlchemy engine
 engine = create_engine(settings.DATABASE_URL)
