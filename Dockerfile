@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production \
     PORT=8080 \
-    CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON -DUSE_SSE_INSTRUCTIONS=ON -DUSE_MMX_INSTRUCTIONS=ON -DUSE_BLAS=ON -DUSE_LAPACK=ON -DUSE_CUDA=OFF" \
+    CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON -DUSE_SSE_INSTRUCTIONS=ON -DUSE_MMX_INSTRUCTIONS=ON -DUSE_BLAS=ON -DUSE_LAPACK=ON -DUSE_CUDA=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
     FORCE_CMAKE=1 \
     DLIB_USE_CUDA=0 \
     PIP_NO_CACHE_DIR=1
@@ -42,7 +42,7 @@ COPY requirements.txt .
 # Install dlib and face-recognition
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir numpy && \
-    pip install --no-cache-dir cmake && \
+    pip install --no-cache-dir cmake==3.25.0 && \
     pip install --no-cache-dir wheel && \
     pip install --no-cache-dir setuptools && \
     pip install --no-cache-dir dlib==19.22.0 && \
