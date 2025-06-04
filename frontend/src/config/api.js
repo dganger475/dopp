@@ -11,9 +11,11 @@ export const getApiUrl = (path) => {
   const formattedPath = path.startsWith('/') ? path : `/${path}`;
   
   // If we're in development or on the same domain, use relative URLs
-  if (!API_BASE_URL || window.location.origin === API_BASE_URL) {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return formattedPath;
   }
+  
+  // In production, always use the full URL
   return `${API_BASE_URL}${formattedPath}`;
 };
 
