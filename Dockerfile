@@ -13,6 +13,13 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    pkg-config \
+    libx11-dev \
+    libatlas-base-dev \
+    libgtk-3-dev \
+    libboost-python-dev \
     libsm6 \
     libxext6 \
     libxrender-dev \
@@ -20,14 +27,15 @@ RUN apt-get update && \
     libpq-dev \
     libopenblas-dev \
     liblapack-dev \
-    cmake \
-    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install dlib first
+RUN pip install --no-cache-dir dlib==19.24.2
+
+# Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
