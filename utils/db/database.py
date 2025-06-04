@@ -13,6 +13,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
+import urllib.parse
+from sqlalchemy.exc import SQLAlchemyError
 
 """
 Database Utilities
@@ -125,6 +127,61 @@ def get_db_connection():
                 conn.close()
             except Exception as e:
                 logging.error(f"Error closing database connection: {e}")
+
+def get_users_db_connection(db_path=None, app=None):
+    """
+    Compatibility function for legacy code that expects get_users_db_connection.
+    This function now uses SQLAlchemy to maintain compatibility with the new database system.
+    
+    Args:
+        db_path: Ignored in new system, kept for compatibility
+        app: Optional Flask app instance. If not provided, tries to use current_app.
+    
+    Returns:
+        A SQLAlchemy session object that can be used like the old connection.
+    """
+    try:
+        if current_app:
+            return current_app.db.session
+        else:
+            # Create a new engine and session if not in app context
+            db_url = os.getenv('DATABASE_URL')
+            if not db_url:
+                raise ValueError("DATABASE_URL environment variable is not set")
+            
+            # Parse the URL to ensure it's properly encoded
+            parsed = urllib.parse.urlparse(db_url)
+            encoded_password = urllib.parse.quote(parsed.password)
+            db_url = db_url.replace(parsed.password, encoded_password)
+            
+            # Configure the engine with Supabase-specific settings
+            engine = create_engine(
+                db_url,
+                poolclass=QueuePool,
+                pool_size=5,
+                max_overflow=10,
+                pool_timeout=30,
+                pool_recycle=1800,
+                connect_args={
+                    'connect_timeout': 10,
+                    'application_name': 'dopple_app',
+                    'options': '-c statement_timeout=30000'  # 30 second timeout
+                }
+            )
+            
+            # Test the connection
+            try:
+                with engine.connect() as conn:
+                    conn.execute("SELECT 1")
+            except SQLAlchemyError as e:
+                logging.error(f"Failed to connect to Supabase: {e}")
+                raise
+            
+            Session = sessionmaker(bind=engine)
+            return Session()
+    except Exception as e:
+        logging.error(f"Error getting database connection: {str(e)}")
+        raise
 
 def close_all_connections():
     """Close all database connections in the pool."""

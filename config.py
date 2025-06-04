@@ -17,13 +17,18 @@ class Config:
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
     # Database settings
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 5,
         'max_overflow': 10,
         'pool_timeout': 30,
-        'pool_recycle': 1800
+        'pool_recycle': 1800,
+        'connect_args': {
+            'connect_timeout': 10,
+            'application_name': 'dopple_app',
+            'options': '-c statement_timeout=30000'  # 30 second timeout
+        }
     }
     
     # Cache settings
@@ -152,7 +157,7 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/dopple')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
     CACHE_TYPE = 'simple'
@@ -166,7 +171,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:postgres@localhost:5432/dopple_test'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres'
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
@@ -179,7 +184,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
     LOG_LEVEL = 'WARNING'
