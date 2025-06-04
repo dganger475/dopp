@@ -23,6 +23,8 @@ def setup_cors(app):
         'http://127.0.0.1:3000',
         'http://localhost:8080',  # Another common dev port
         'http://127.0.0.1:8080',
+        # Production domain
+        'https://doppleganger.us',
         # Allow ngrok URLs for beta testing
         'https://*.ngrok.io',
         'https://*.ngrok-free.app'

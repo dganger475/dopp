@@ -126,9 +126,19 @@ def create_app(config_class=None):
     # Setup CORS before registering blueprints
     app = setup_cors(app)
     
-    # Setup CORS for local development
+    # Setup CORS for local development and Vercel
     from flask_cors import CORS
-    CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5001", "http://127.0.0.1:5001"])  # Allow frontend dev server
+    CORS(app, 
+         supports_credentials=True, 
+         origins=["http://localhost:5173", 
+                 "http://127.0.0.1:5173", 
+                 "http://localhost:5001", 
+                 "http://127.0.0.1:5001", 
+                 "https://doppleganger.us"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         expose_headers=["Content-Type", "Authorization"],
+         max_age=86400)  # 24 hours
     
     # User loader for Flask-Login
     @login_manager.user_loader
@@ -170,5 +180,4 @@ app = create_app()
 
 # Only run the app if this file is run directly
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 7860))  # Hugging Face's default port
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=5000, debug=True)
