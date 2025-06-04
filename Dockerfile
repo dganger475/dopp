@@ -7,7 +7,8 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
     PORT=8080 \
     CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON" \
-    FORCE_CMAKE=1
+    FORCE_CMAKE=1 \
+    DLIB_USE_CUDA=0
 
 # Create and set working directory
 WORKDIR /app
@@ -37,10 +38,12 @@ RUN apt-get update && \
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dlib from source with specific version
+# Install dlib and face-recognition separately
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir numpy && \
-    pip install --no-cache-dir dlib==19.22.0
+    pip install --no-cache-dir cmake && \
+    pip install --no-cache-dir dlib==19.22.0 && \
+    pip install --no-cache-dir face-recognition==1.3.0
 
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
