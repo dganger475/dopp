@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
     FLASK_APP=app.py \
-    PORT=5000
+    PORT=8080 \
+    PYTHONPATH=/app
 
 # Create and set working directory
 WORKDIR /app
@@ -21,14 +22,21 @@ RUN apt-get update && \
     libatlas-base-dev \
     libgtk-3-dev \
     libboost-python-dev \
-    libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir dlib==19.22.1 && \
     pip install --no-cache-dir -r requirements.txt
+
+# Create necessary directories
+RUN mkdir -p /app/instance /app/flask_session
 
 # Copy application files
 COPY . .

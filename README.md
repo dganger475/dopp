@@ -1,3 +1,46 @@
+---
+title: Doppleganger
+emoji: 👥
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
+# Doppleganger
+
+Find your lookalikes using AI-powered face recognition.
+
+## Features
+- Face recognition and matching
+- User profiles and social features
+- Secure image storage
+- Real-time matching
+
+## Setup
+1. Clone this repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up environment variables:
+   - `DATABASE_URL`
+   - `B2_APPLICATION_KEY_ID`
+   - `B2_APPLICATION_KEY`
+   - `B2_BUCKET_NAME`
+   - `SECRET_KEY`
+
+## Development
+```bash
+python app.py
+```
+
+## API Endpoints
+- `/api/search` - Search for lookalikes
+- `/api/users` - User management
+- `/api/auth` - Authentication
+- `/api/storage` - Image storage
+
+## License
+MIT
+
 # DoppleGänger
 
 ## Overview
