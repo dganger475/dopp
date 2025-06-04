@@ -36,11 +36,13 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual Environment
 venv/
 ENV/
 env/
+.env
 
 # IDE
 .idea/
@@ -56,14 +58,12 @@ flask_session/
 
 # Logs
 *.log
-logs/
-.coverage
-htmlcov/
+*_log.txt
+debug_output.txt
 
-# Environment variables
-.env
-.env.*
-!.env.example
+# Local development
+.env.local
+.env.*.local
 
 # Build files
 frontend/dist/
@@ -86,7 +86,6 @@ Thumbs.db
 extracted_faces/
 b2_supabase_faiss_mapping.csv*
 backup_codes.txt
-debug_output.txt
 test_cors_result.txt
 missing_db_images.txt
 *.dll
@@ -115,4 +114,32 @@ static/faces/*
 
 # Git configuration
 git config --global core.autocrlf true
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Backup files
+*.backup*
+*.bak
+*.old
+
+# Other
+*.csv
+*.json
+!config.json
+!package.json
+
+# Temporary files
+tmp/
+temp/
+
+# Dopple directory
+dopple/
 
