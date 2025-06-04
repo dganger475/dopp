@@ -17,12 +17,14 @@ class CacheConfig:
     # Redis configuration
     if CACHE_TYPE == 'redis':
         CACHE_REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-        CACHE_KEY_PREFIX = 'doppleganger:'
+        CACHE_KEY_PREFIX = 'dopple503:'
         CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes
         CACHE_OPTIONS = {
             'socket_connect_timeout': 5,  # seconds
             'socket_timeout': 5,          # seconds
-            'socket_keepalive': True
+            'socket_keepalive': True,
+            'retry_on_timeout': True,
+            'max_connections': 50
         }
     else:
         # Simple in-memory cache (for development)

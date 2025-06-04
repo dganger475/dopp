@@ -64,7 +64,7 @@ def init_extensions(app):
     # Initialize limiter after app context is available
     limiter.init_app(app)
     
-    # Initialize SQLAlchemy and Migrate
+    # Initialize SQLAlchemy and Migrate with PostgreSQL-specific settings
     print("Initializing SQLAlchemy with app:", app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -73,10 +73,11 @@ def init_extensions(app):
     with app.app_context():
         # This will create tables if they don't exist
         from models.user import User  # noqa: F401
+        from models.face import Face  # noqa: F401
         db.create_all()
         
-        # Initialize the database connection pool
-        from utils.db.database import init_app as init_db
-        init_db(app)
+        # Run migrations
+        from flask_migrate import upgrade
+        upgrade()
     
     return app

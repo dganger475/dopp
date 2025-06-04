@@ -24,12 +24,16 @@ class Config:
     os.makedirs(DB_DIR, exist_ok=True)
     os.makedirs(INDEX_DIR, exist_ok=True)
     
-    # Database paths
-    DB_PATH = os.environ.get('DB_PATH', os.path.join(DB_DIR, 'faces.db'))
-    
-    # SQLAlchemy config
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.abspath(DB_PATH)
+    # Database configuration
+    DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/postgres')
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': 20,
+        'max_overflow': 5,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
+    }
     
     # Face recognition paths
     INDEX_PATH = os.environ.get('INDEX_PATH', os.path.join(INDEX_DIR, 'faces.index'))
@@ -90,7 +94,7 @@ class TestingConfig(Config):
     TESTING = True
     
     # Use in-memory database for tests
-    DB_PATH = ":memory:"
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     
     # Temp directories for testing
     UPLOAD_FOLDER = os.path.join("static", "test_uploads")

@@ -107,6 +107,11 @@ def register_blueprints(app):
 def create_app(config_class=None):
     """Create and configure the Flask application."""
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
+    
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
     if config_class == 'testing':
         from config import TestingConfig
         app.config.from_object(TestingConfig)
@@ -116,6 +121,9 @@ def create_app(config_class=None):
         from config.cache import CacheConfig
         app.config.from_object(Config)
         app.config.from_object(CacheConfig)
+    
+    # Log database configuration
+    logger.info(f"Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
     
     # Initialize extensions first
     from extensions import init_extensions
@@ -162,7 +170,13 @@ def create_app(config_class=None):
     # Initialize database tables
     with app.app_context():
         from extensions import db
-        db.create_all()
+        try:
+            # Create tables if they don't exist
+            db.create_all()
+            logger.info("Successfully created/verified database tables")
+        except Exception as e:
+            logger.error(f"Error creating database tables: {e}")
+            raise
     
     # Initialize template helpers
     init_template_helpers(app)

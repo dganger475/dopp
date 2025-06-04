@@ -21,6 +21,7 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
 [[mounts]]
   source = "dopple_data"
   destination = "/app/data"
+  initial_size = "1GB"
 
 [http_service]
   internal_port = 8080
