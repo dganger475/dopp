@@ -1,0 +1,61 @@
+# fly.toml app configuration file generated for dopple503 on 2025-06-03T08:47:26-07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "dopple503"
+primary_region = "lax"  # Los Angeles, change this to your preferred region
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  strategy = "immediate"
+
+[env]
+  DATABASE_URL = "postgres://postgres:postgres@localhost:5432/dopple"
+  FLASK_APP = "app.py"
+  FLASK_ENV = "production"
+  PORT = "8080"
+  PYTHONPATH = "/app"
+
+[[mounts]]
+  source = "dopple_data"
+  destination = "/app/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 4
+  memory_mb = 8192
+  memory_gb = 8
+
+[[metrics]]
+  port = 8081
+  path = "/metrics"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "1s"

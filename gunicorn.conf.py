@@ -2,12 +2,12 @@ import multiprocessing
 import os
 
 # Server socket
-bind = "0.0.0.0:5000"
+bind = f"0.0.0.0:{os.getenv('PORT', '8080')}"
 backlog = 2048
 
 # Worker processes
-workers = 2  # Reduced from 4 to 2
-worker_class = "gevent"
+workers = multiprocessing.cpu_count() * 2 + 1
+worker_class = 'gevent'
 worker_connections = 1000
 timeout = 30
 keepalive = 2
@@ -16,16 +16,15 @@ keepalive = 2
 max_requests = 1000
 max_requests_jitter = 50
 worker_tmp_dir = "/dev/shm"  # Use RAM for temporary files
-worker_class = "gevent"
 preload_app = True  # Preload application code
 
 # Logging
-accesslog = "-"
-errorlog = "-"
-loglevel = "info"
+accesslog = '-'
+errorlog = '-'
+loglevel = 'info'
 
 # Process naming
-proc_name = "dopp"
+proc_name = 'dopple'
 
 # SSL
 keyfile = None
@@ -41,6 +40,9 @@ tmp_upload_dir = None
 
 # Server hooks
 def on_starting(server):
+    pass
+
+def on_reload(server):
     pass
 
 def on_exit(server):

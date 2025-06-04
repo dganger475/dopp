@@ -170,4 +170,5 @@ app = create_app()
 
 # Only run the app if this file is run directly
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get('PORT', 7860))  # Hugging Face's default port
+    app.run(host='0.0.0.0', port=port)
