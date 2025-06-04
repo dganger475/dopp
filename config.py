@@ -7,6 +7,8 @@ This module handles application configuration with environment-specific settings
 import os
 from typing import Dict, Any
 from datetime import timedelta
+from pydantic_settings import BaseSettings
+from functools import lru_cache
 
 class Config:
     """Base configuration class."""
@@ -210,3 +212,13 @@ def get_config() -> Config:
     return config[env]
 
 DEFAULT_PROFILE_IMAGE = 'images/default_profile.png'
+
+class Settings(BaseSettings):
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/dopple"
+    
+    class Config:
+        env_file = ".env"
+
+@lru_cache()
+def get_settings():
+    return Settings()

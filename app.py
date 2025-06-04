@@ -33,12 +33,13 @@ from flask_login import LoginManager, current_user, login_required
 from flask_migrate import Migrate
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 # Import template helpers
 from template_helpers import init_template_helpers
 
 # Import config after environment variables are loaded
-from config import config as config_dict, Config
+from config import config as config_dict, Config, get_settings
 from config.cache import CacheConfig
 
 # Import extensions (db will be initialized later)
@@ -50,6 +51,7 @@ from utils.image_paths import get_image_path, normalize_profile_image_path
 from utils.image_urls import get_face_image_url, get_profile_image_url
 from utils.db.storage import get_storage
 from utils.files.utils import generate_face_filename, is_anonymized_face_filename, parse_face_id_from_filename
+from utils.db.database import get_db, Base, engine
 
 # Import models
 from models.user import User
@@ -131,7 +133,6 @@ def create_app(config_class=None):
     app = setup_cors(app)
     
     # Setup CORS for local development and Vercel
-    from flask_cors import CORS
     CORS(app, 
          supports_credentials=True, 
          origins=["http://localhost:5173", 
