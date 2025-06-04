@@ -1,5 +1,5 @@
-# Use Python base image
-FROM python:3.11-slim
+# Use Python 3.10 base image
+FROM python:3.10-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -27,13 +27,17 @@ RUN apt-get update && \
     libpq-dev \
     libopenblas-dev \
     liblapack-dev \
+    git \
+    wget \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dlib first
-RUN pip install --no-cache-dir dlib==19.24.2
+# Install dlib first with specific version
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir dlib==19.24.2
 
 # Install other Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
