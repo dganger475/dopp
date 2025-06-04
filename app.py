@@ -32,7 +32,7 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_caching import Cache
 from flask_login import LoginManager, current_user, login_required
 from flask_migrate import Migrate
-from utils.db.database import get_users_db_connection
+from utils.db.database import get_db_connection
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 
