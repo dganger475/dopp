@@ -1,12 +1,11 @@
-# Use standard Python image
-FROM python:3.10-slim
+# Use Python base image
+FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    FLASK_ENV=production \
+ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
-    PORT=5000
+    FLASK_ENV=production \
+    PORT=8080
 
 # Create and set working directory
 WORKDIR /app
@@ -14,18 +13,22 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
     libsm6 \
     libxext6 \
     libxrender-dev \
     libglib2.0-0 \
+    libpq-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    cmake \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
 RUN mkdir -p /app/instance /app/flask_session /app/uploads
@@ -40,4 +43,4 @@ RUN useradd -m appuser && \
 USER appuser
 
 # Run gunicorn
-CMD ["gunicorn", "--config", "gunicorn.conf.py", "app:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "--timeout", "120", "app:app"] 

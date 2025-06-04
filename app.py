@@ -140,6 +140,11 @@ def create_app(config_class=None):
          expose_headers=["Content-Type", "Authorization"],
          max_age=86400)  # 24 hours
     
+    # Add health check endpoint
+    @app.route('/health')
+    def health_check():
+        return jsonify({"status": "healthy"}), 200
+    
     # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
