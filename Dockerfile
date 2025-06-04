@@ -48,7 +48,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir PyJWT==2.8.0 && \
     pip install --no-cache-dir dlib==19.22.0 && \
     pip install --no-cache-dir face-recognition==1.3.0 && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir PyJWT==2.8.0 --force-reinstall
 
 # Create necessary directories
 RUN mkdir -p /app/instance /app/flask_session /app/uploads
