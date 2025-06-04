@@ -83,19 +83,6 @@ Thumbs.db
 !config.json
 !package.json
 
-# Large model files (but keep Python modules)
-models/*.h5
-models/*.pth
-models/*.pb
-models/*.caffemodel
-models/*.dat
-models/*.xml
-models/*.bin
-models/*.model
-!models/*.py
-!models/__init__.py
-!models/social/
-
 # Temporary files
 tmp/
 temp/ 
