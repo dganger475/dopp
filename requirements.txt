@@ -26,3 +26,4 @@ gevent==24.2.1
 b2sdk==1.24.0
 python-magic==0.4.27
 faiss-cpu==1.7.4
+PyJWT==2.8.0
