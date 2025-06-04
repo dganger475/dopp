@@ -34,7 +34,19 @@ RUN apt-get update && \
     git \
     wget \
     unzip \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy frontend files and build
+COPY frontend/package*.json ./frontend/
+WORKDIR /app/frontend
+RUN npm install
+COPY frontend/ .
+RUN npm run build
+
+# Go back to main directory
+WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .

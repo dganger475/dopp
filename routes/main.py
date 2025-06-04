@@ -90,13 +90,7 @@ def discover():
 # =============================
 # HOME/FEED ROUTE
 # =============================
-@main.route("/")
-def index():
-    """
-    Home page of the application.
-    Redirects to the React frontend.
-    """
-    return redirect("http://localhost:5173")
+# Root route is handled by app.py's catch-all route
 
 
 # =============================
