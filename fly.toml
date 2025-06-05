@@ -36,7 +36,7 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   [[http_service.checks]]
     interval = "30s"
     timeout = "10s"
-    grace_period = "60s"
+    grace_period = "120s"
     method = "GET"
     path = "/health"
     protocol = "http"
@@ -69,4 +69,4 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   [[services.tcp_checks]]
     interval = "15s"
     timeout = "5s"
-    grace_period = "60s"
+    grace_period = "120s"

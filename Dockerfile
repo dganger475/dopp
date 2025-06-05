@@ -65,7 +65,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir PyJWT==2.8.0 --force-reinstall
 
 # Create necessary directories
-RUN mkdir -p /app/instance /app/flask_session /app/uploads
+RUN mkdir -p /app/instance /app/flask_session /app/uploads /app/data/rate_limits
 
 # Copy application files
 COPY . .
@@ -76,5 +76,19 @@ RUN useradd -m appuser && \
 
 USER appuser
 
-# Run gunicorn with explicit host binding
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app:app"] 
+# Expose the port
+EXPOSE 5000
+
+# Run gunicorn with explicit host binding and more logging
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:5000", \
+     "--workers", "4", \
+     "--timeout", "120", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "debug", \
+     "--capture-output", \
+     "--enable-stdio-inheritance", \
+     "--worker-class", "gevent", \
+     "--worker-connections", "1000", \
+     "app:app"] 
