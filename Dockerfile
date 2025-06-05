@@ -109,7 +109,7 @@ capture_output = True\n\
 enable_stdio_inheritance = True\n\
 preload_app = True\n\
 reload = True\n\
-reload_extra_files = ['/app/app.py', '/app/config/*.py']" > /app/gunicorn.conf.py
+reload_extra_files = ['/app/app.py']" > /app/gunicorn.conf.py
 
 # Run the startup script
 CMD ["/app/start.sh"] 
