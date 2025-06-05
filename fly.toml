@@ -17,7 +17,7 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   FLASK_ENV = "production"
   PORT = "8080"
   PYTHONPATH = "/app"
-  DATABASE_URL = "postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+  DATABASE_URL = "{{ .Secrets.DATABASE_URL }}"
 
 [[mounts]]
   source = "dopple_data"
