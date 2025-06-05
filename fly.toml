@@ -9,38 +9,32 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
 [build]
   dockerfile = "Dockerfile"
 
-[deploy]
-  strategy = "immediate"
-
 [env]
-  FLASK_APP = "app.py"
-  FLASK_ENV = "production"
   PORT = "5000"
   HOST = "0.0.0.0"
+  FLASK_APP = "app.py"
+  FLASK_ENV = "production"
+  PYTHONUNBUFFERED = "1"
   PYTHONPATH = "/app"
   DATABASE_URL = "{{ .Secrets.DATABASE_URL }}"
-
-[[mounts]]
-  source = "dopple_data"
-  destination = "/app/data"
-  initial_size = "1GB"
 
 [http_service]
   internal_port = 5000
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 1
   processes = ["app"]
 
   [[http_service.checks]]
-    interval = "30s"
+    interval = "15s"
     timeout = "10s"
     grace_period = "120s"
-    method = "GET"
+    method = "get"
     path = "/health"
     protocol = "http"
     tls_skip_verify = true
+    headers = { Host = "dopple503.fly.dev" }
 
 [[vm]]
   cpu_kind = "shared"
@@ -49,7 +43,7 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   memory_gb = 8
 
 [[metrics]]
-  port = 8081
+  port = 9091
   path = "/metrics"
 
 [[services]]
@@ -70,3 +64,14 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
     interval = "15s"
     timeout = "5s"
     grace_period = "120s"
+
+[mounts]
+  source = "dopple_data"
+  destination = "/app/data"
+  initial_size = "1GB"
+
+[deploy]
+  strategy = "rolling"
+  max_per_region = 1
+  wait_for_health_checks = true
+  health_check_timeout = "120s"

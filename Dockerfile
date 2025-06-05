@@ -38,6 +38,7 @@ RUN apt-get update && \
     unzip \
     nodejs \
     npm \
+    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy frontend files and build
@@ -82,6 +83,16 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
+# Create a startup script
+RUN echo '#!/bin/bash\n\
+echo "Waiting for port 5000 to be available..."\n\
+while ! nc -z localhost 5000; do\n\
+  sleep 1\n\
+done\n\
+echo "Port 5000 is available"\n\
+exec gunicorn --config /app/gunicorn.conf.py app:app\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
 # Create a gunicorn config file
 RUN echo "import multiprocessing\n\
 bind = '0.0.0.0:5000'\n\
@@ -97,7 +108,9 @@ errorlog = '-'\n\
 loglevel = 'debug'\n\
 capture_output = True\n\
 enable_stdio_inheritance = True\n\
-preload_app = True" > /app/gunicorn.conf.py
+preload_app = True\n\
+reload = True\n\
+reload_extra_files = ['/app/app.py', '/app/config/*.py']" > /app/gunicorn.conf.py
 
-# Run gunicorn with the config file
-CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "app:app"] 
+# Run the startup script
+CMD ["/app/start.sh"] 
