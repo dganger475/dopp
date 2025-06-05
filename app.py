@@ -39,7 +39,7 @@ from flask_cors import CORS
 from template_helpers import init_template_helpers
 
 # Import config after environment variables are loaded
-from config import Config, get_config, get_settings
+from config.app_config import Config, get_config, get_settings
 from config.cache import CacheConfig
 
 # Import extensions (db will be initialized later)
@@ -104,7 +104,7 @@ def register_blueprints(app):
         'admin': admin
     }
 
-def create_app(config_class=None):
+def create_app(config_object=None):
     """Create and configure the Flask application."""
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     
@@ -112,15 +112,9 @@ def create_app(config_class=None):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
-    if config_class == 'testing':
-        from config import TestingConfig
-        app.config.from_object(TestingConfig)
-    else:
-        # your normal config loading
-        from config import Config
-        from config.cache import CacheConfig
-        app.config.from_object(Config)
-        app.config.from_object(CacheConfig)
+    if config_object is None:
+        config_object = get_config()
+    app.config.from_object(config_object)
     
     # Log database configuration
     logger.info(f"Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
