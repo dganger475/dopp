@@ -112,9 +112,14 @@ def create_app(config_object=None):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
     
+    # Load configuration
     if config_object is None:
         config_object = get_config()
     app.config.from_object(config_object)
+    
+    # Format database URL if needed
+    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('https://'):
+        app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('https://', 'postgresql://')
     
     # Log database configuration
     logger.info(f"Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
