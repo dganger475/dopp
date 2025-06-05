@@ -89,27 +89,8 @@ echo "Current directory: $(pwd)"\n\
 echo "Directory contents:"\n\
 ls -la\n\
 echo "Starting gunicorn..."\n\
-exec gunicorn --config /app/gunicorn.conf.py --log-level debug app:app\n\
+exec gunicorn --bind 0.0.0.0:5000 --workers 1 --worker-class gevent --worker-connections 1000 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level debug --capture-output --enable-stdio-inheritance --preload app:app\n\
 ' > /app/start.sh && chmod +x /app/start.sh
-
-# Create a gunicorn config file
-RUN echo "import multiprocessing\n\
-bind = '0.0.0.0:5000'\n\
-workers = 1\n\
-worker_class = 'gevent'\n\
-worker_connections = 1000\n\
-timeout = 120\n\
-keepalive = 2\n\
-max_requests = 1000\n\
-max_requests_jitter = 50\n\
-accesslog = '-'\n\
-errorlog = '-'\n\
-loglevel = 'debug'\n\
-capture_output = True\n\
-enable_stdio_inheritance = True\n\
-preload_app = True\n\
-reload = True\n\
-reload_extra_files = ['/app/app.py']" > /app/gunicorn.conf.py
 
 # Run the startup script
 CMD ["/app/start.sh"] 
