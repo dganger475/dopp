@@ -82,10 +82,20 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
+# Create a startup script
+RUN echo '#!/bin/bash\n\
+echo "Starting application..."\n\
+echo "Current directory: $(pwd)"\n\
+echo "Directory contents:"\n\
+ls -la\n\
+echo "Starting gunicorn..."\n\
+exec gunicorn --config /app/gunicorn.conf.py --log-level debug app:app\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
 # Create a gunicorn config file
 RUN echo "import multiprocessing\n\
 bind = '0.0.0.0:5000'\n\
-workers = multiprocessing.cpu_count() * 2 + 1\n\
+workers = 1\n\
 worker_class = 'gevent'\n\
 worker_connections = 1000\n\
 timeout = 120\n\
@@ -101,5 +111,5 @@ preload_app = True\n\
 reload = True\n\
 reload_extra_files = ['/app/app.py', '/app/config/*.py']" > /app/gunicorn.conf.py
 
-# Run gunicorn directly
-CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "--log-level", "debug", "app:app"] 
+# Run the startup script
+CMD ["/app/start.sh"] 

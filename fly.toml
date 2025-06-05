@@ -27,9 +27,9 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   processes = ["app"]
 
   [[http_service.checks]]
-    interval = "30s"
-    timeout = "15s"
-    grace_period = "180s"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "60s"
     method = "get"
     path = "/health"
     protocol = "http"
@@ -61,9 +61,9 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
     handlers = ["tls", "http"]
 
   [[services.tcp_checks]]
-    interval = "30s"
-    timeout = "15s"
-    grace_period = "180s"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "60s"
 
 [mounts]
   source = "dopple_data"
@@ -74,4 +74,4 @@ primary_region = "lax"  # Los Angeles, change this to your preferred region
   strategy = "rolling"
   max_per_region = 1
   wait_for_health_checks = true
-  health_check_timeout = "180s"
+  health_check_timeout = "60s"
