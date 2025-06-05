@@ -38,9 +38,17 @@ CONNECTION_TIMEOUT = 30  # seconds
 # Get configuration
 config = get_config()
 
+def get_database_url():
+    """Get properly formatted database URL."""
+    db_url = config.SQLALCHEMY_DATABASE_URI
+    if db_url.startswith('https://'):
+        # Convert https URL to postgresql URL
+        db_url = db_url.replace('https://', 'postgresql://')
+    return db_url
+
 # Create SQLAlchemy engine
 engine = create_engine(
-    config.SQLALCHEMY_DATABASE_URI,
+    get_database_url(),
     **config.SQLALCHEMY_ENGINE_OPTIONS
 )
 
@@ -162,14 +170,9 @@ def get_users_db_connection(db_path=None, app=None):
             return current_app.db.session
         else:
             # Create a new engine and session if not in app context
-            db_url = os.getenv('DATABASE_URL')
+            db_url = get_database_url()
             if not db_url:
                 raise ValueError("DATABASE_URL environment variable is not set")
-            
-            # Parse the URL to ensure it's properly encoded
-            parsed = urllib.parse.urlparse(db_url)
-            encoded_password = urllib.parse.quote(parsed.password)
-            db_url = db_url.replace(parsed.password, encoded_password)
             
             # Configure the engine with Supabase-specific settings
             engine = create_engine(
@@ -191,7 +194,7 @@ def get_users_db_connection(db_path=None, app=None):
                 with engine.connect() as conn:
                     conn.execute("SELECT 1")
             except SQLAlchemyError as e:
-                logging.error(f"Failed to connect to Supabase: {e}")
+                logging.error(f"Failed to connect to database: {e}")
                 raise
             
             Session = sessionmaker(bind=engine)
