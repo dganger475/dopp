@@ -35,10 +35,14 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
 CONNECTION_TIMEOUT = 30  # seconds
 
-settings = get_config()
+# Get configuration
+config = get_config()
 
 # Create SQLAlchemy engine
-engine = create_engine(settings.DATABASE_URL)
+engine = create_engine(
+    config.SQLALCHEMY_DATABASE_URI,
+    **config.SQLALCHEMY_ENGINE_OPTIONS
+)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
