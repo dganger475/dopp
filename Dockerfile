@@ -7,6 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
     PORT=5000 \
     HOST=0.0.0.0 \
+    PYTHONPATH=/app \
     CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON -DUSE_SSE_INSTRUCTIONS=ON -DUSE_MMX_INSTRUCTIONS=ON -DUSE_BLAS=ON -DUSE_LAPACK=ON -DUSE_CUDA=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
     FORCE_CMAKE=1 \
     DLIB_USE_CUDA=0 \
@@ -62,7 +63,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir dlib==19.22.0 && \
     pip install --no-cache-dir face-recognition==1.3.0 && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir PyJWT==2.8.0 --force-reinstall
+    pip install --no-cache-dir PyJWT==2.8.0 --force-reinstall && \
+    pip install --no-cache-dir gevent==23.9.1 && \
+    pip install --no-cache-dir gunicorn==21.2.0
 
 # Create necessary directories
 RUN mkdir -p /app/instance /app/flask_session /app/uploads /app/data/rate_limits
@@ -79,16 +82,22 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
-# Run gunicorn with explicit host binding and more logging
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:5000", \
-     "--workers", "4", \
-     "--timeout", "120", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "--log-level", "debug", \
-     "--capture-output", \
-     "--enable-stdio-inheritance", \
-     "--worker-class", "gevent", \
-     "--worker-connections", "1000", \
-     "app:app"] 
+# Create a gunicorn config file
+RUN echo "import multiprocessing\n\
+bind = '0.0.0.0:5000'\n\
+workers = multiprocessing.cpu_count() * 2 + 1\n\
+worker_class = 'gevent'\n\
+worker_connections = 1000\n\
+timeout = 120\n\
+keepalive = 2\n\
+max_requests = 1000\n\
+max_requests_jitter = 50\n\
+accesslog = '-'\n\
+errorlog = '-'\n\
+loglevel = 'debug'\n\
+capture_output = True\n\
+enable_stdio_inheritance = True\n\
+preload_app = True" > /app/gunicorn.conf.py
+
+# Run gunicorn with the config file
+CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "app:app"] 

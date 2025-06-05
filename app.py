@@ -15,9 +15,22 @@ import logging
 import time
 from datetime import timedelta
 
+# Configure logging first
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # Load environment variables first
 from dotenv import load_dotenv
 load_dotenv()
+
+# Log environment information
+logger.info(f"Python version: {platform.python_version()}")
+logger.info(f"Platform: {platform.platform()}")
+logger.info(f"Working directory: {os.getcwd()}")
+logger.info(f"Environment variables: {dict(os.environ)}")
 
 # Import Flask and extensions
 from flask import Flask, request, render_template, redirect, url_for, jsonify, send_from_directory, session, make_response
@@ -58,6 +71,7 @@ from models.user import User
 
 def register_blueprints(app):
     """Register Flask blueprints with app."""
+    logger.info("Registering blueprints...")
     from routes.main import main
     from routes.auth import auth
     from routes.search import search
@@ -88,34 +102,18 @@ def register_blueprints(app):
     app.register_blueprint(test)
     app.register_blueprint(admin, url_prefix='/admin', name='admin')
     app.register_blueprint(face_upload)
-    
-    # Make blueprints available if needed
-    app.blueprints = {
-        'main': main,
-        'auth': auth,
-        'profile': profile_view,
-        'edit_profile': edit_profile,
-        'profile_update': profile_update,
-        'face': face,
-        'social': social,
-        'search': search,
-        'api': api,
-        'api_users': api_users,
-        'admin': admin
-    }
+    logger.info("All blueprints registered successfully")
 
 def create_app(config_object=None):
     """Create and configure the Flask application."""
+    logger.info("Creating Flask application...")
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
-    
-    # Configure logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
     
     # Load configuration
     if config_object is None:
         config_object = get_config()
     app.config.from_object(config_object)
+    logger.info("Configuration loaded")
     
     # Format database URL if needed
     if app.config['SQLALCHEMY_DATABASE_URI'].startswith('https://'):
@@ -144,10 +142,13 @@ def create_app(config_object=None):
         logger.error("No database URL configured!")
     
     # Initialize extensions first
+    logger.info("Initializing extensions...")
     from extensions import init_extensions
     init_extensions(app)
+    logger.info("Extensions initialized")
     
     # Setup CORS before registering blueprints
+    logger.info("Setting up CORS...")
     app = setup_cors(app)
     
     # Setup CORS for local development and Vercel
@@ -163,14 +164,17 @@ def create_app(config_object=None):
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          expose_headers=["Content-Type", "Authorization"],
          max_age=86400)  # 24 hours
+    logger.info("CORS setup complete")
     
     # Configure Flask-Limiter with file storage
+    logger.info("Configuring rate limiter...")
     limiter.init_app(
         app,
         storage_uri="file:///app/data/rate_limits",
         default_limits=["200 per day", "50 per hour"],
         strategy="fixed-window"
     )
+    logger.info("Rate limiter configured")
     
     # Add health check endpoint
     @app.route('/health')
@@ -203,6 +207,7 @@ def create_app(config_object=None):
     register_blueprints(app)
     
     # Initialize database tables
+    logger.info("Initializing database tables...")
     with app.app_context():
         from extensions import db
         try:
@@ -214,7 +219,9 @@ def create_app(config_object=None):
             raise
     
     # Initialize template helpers
+    logger.info("Initializing template helpers...")
     init_template_helpers(app)
+    logger.info("Template helpers initialized")
     
     # Serve React App
     @app.route('/', defaults={'path': ''})
@@ -225,13 +232,17 @@ def create_app(config_object=None):
         else:
             return send_from_directory(app.static_folder, 'index.html')
     
+    logger.info("Flask application created successfully")
     return app
 
 # Create the app instance for Gunicorn
+logger.info("Creating application instance...")
 app = create_app()
+logger.info("Application instance created")
 
 # Only run the app if this file is run directly
 if __name__ == '__main__':
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 5000))
+    logger.info(f"Starting development server on {host}:{port}")
     app.run(host=host, port=port)
