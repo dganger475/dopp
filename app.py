@@ -164,13 +164,24 @@ def create_app(config_object=None):
          expose_headers=["Content-Type", "Authorization"],
          max_age=86400)  # 24 hours
     
+    # Configure Flask-Limiter with file storage
+    limiter.init_app(
+        app,
+        storage_uri="file:///app/data/rate_limits",
+        default_limits=["200 per day", "50 per hour"],
+        strategy="fixed-window"
+    )
+    
     # Add health check endpoint
     @app.route('/health')
     def health_check():
         try:
             # Test database connection
             db.session.execute('SELECT 1')
-            return jsonify({"status": "healthy", "database": "connected"}), 200
+            return jsonify({
+                "status": "healthy",
+                "database": "connected"
+            }), 200
         except Exception as e:
             logger.error(f"Health check failed: {str(e)}")
             return jsonify({"status": "unhealthy", "error": str(e)}), 500
