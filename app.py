@@ -39,7 +39,7 @@ from flask_cors import CORS
 from template_helpers import init_template_helpers
 
 # Import config after environment variables are loaded
-from config import config as config_dict, Config, get_settings
+from config import Config, get_config, get_settings
 from config.cache import CacheConfig
 
 # Import extensions (db will be initialized later)
@@ -139,7 +139,8 @@ def create_app(config_class=None):
                  "http://127.0.0.1:5173", 
                  "http://localhost:5001", 
                  "http://127.0.0.1:5001", 
-                 "https://doppleganger.us"],
+                 "https://doppleganger.us",
+                 "https://dopple503.fly.dev"],
          allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          expose_headers=["Content-Type", "Authorization"],

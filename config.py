@@ -19,7 +19,7 @@ class Config:
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
     
     # Database settings
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_size': 5,
@@ -106,7 +106,8 @@ class Config:
         'http://127.0.0.1:5173',
         'http://localhost:5001',
         'http://127.0.0.1:5001',
-        'https://doppleganger.us'
+        'https://doppleganger.us',
+        'https://dopple503.fly.dev'
     ]
     
     # Redis configuration (if using)
@@ -159,11 +160,10 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
     CACHE_TYPE = 'simple'
-    SESSION_COOKIE_SECURE = False
     
     # Development-specific settings
     DATABASE_POOL_SIZE = 5
@@ -173,7 +173,7 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres'
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
     REMEMBER_COOKIE_SECURE = False
@@ -186,7 +186,7 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres.fsclpejecpqkuqtdxlbu:Fuckswipe123%40%40%40@aws-0-us-west-1.pooler.supabase.com:6543/postgres')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
     LOG_LEVEL = 'WARNING'
@@ -214,7 +214,7 @@ def get_config() -> Config:
 DEFAULT_PROFILE_IMAGE = 'images/default_profile.png'
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/dopple"
+    DATABASE_URL: str = os.getenv('DATABASE_URL', "postgresql://postgres:postgres@localhost:5432/dopple")
     
     class Config:
         env_file = ".env"
@@ -222,3 +222,7 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings():
     return Settings()
+
+# Export the necessary functions and classes
+__all__ = ['Config', 'DevelopmentConfig', 'TestingConfig', 'ProductionConfig', 
+           'get_config', 'get_settings', 'Settings', 'config']
