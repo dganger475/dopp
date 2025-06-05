@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
     FLASK_ENV=production \
     PORT=5000 \
+    HOST=0.0.0.0 \
     CMAKE_ARGS="-DUSE_AVX_INSTRUCTIONS=ON -DUSE_SSE4_INSTRUCTIONS=ON -DUSE_SSE2_INSTRUCTIONS=ON -DUSE_SSE_INSTRUCTIONS=ON -DUSE_MMX_INSTRUCTIONS=ON -DUSE_BLAS=ON -DUSE_LAPACK=ON -DUSE_CUDA=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
     FORCE_CMAKE=1 \
     DLIB_USE_CUDA=0 \
@@ -75,5 +76,5 @@ RUN useradd -m appuser && \
 
 USER appuser
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app:app"] 
+# Run gunicorn with explicit host binding
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "info", "app:app"] 

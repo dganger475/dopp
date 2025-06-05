@@ -121,8 +121,27 @@ def create_app(config_object=None):
     if app.config['SQLALCHEMY_DATABASE_URI'].startswith('https://'):
         app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('https://', 'postgresql://')
     
-    # Log database configuration
-    logger.info(f"Database URL: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+    # Add connection timeout settings
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 5,
+        'max_overflow': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
+        'connect_args': {
+            'connect_timeout': 10,
+            'application_name': 'dopple_app',
+            'options': '-c statement_timeout=30000'  # 30 second timeout
+        }
+    }
+    
+    # Log database configuration (without sensitive info)
+    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_url:
+        # Mask password in logs
+        masked_url = db_url.replace(db_url.split('@')[0], '***:***')
+        logger.info(f"Database URL: {masked_url}")
+    else:
+        logger.error("No database URL configured!")
     
     # Initialize extensions first
     from extensions import init_extensions
@@ -148,7 +167,13 @@ def create_app(config_object=None):
     # Add health check endpoint
     @app.route('/health')
     def health_check():
-        return jsonify({"status": "healthy"}), 200
+        try:
+            # Test database connection
+            db.session.execute('SELECT 1')
+            return jsonify({"status": "healthy", "database": "connected"}), 200
+        except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
+            return jsonify({"status": "unhealthy", "error": str(e)}), 500
     
     # User loader for Flask-Login
     @login_manager.user_loader
@@ -196,4 +221,6 @@ app = create_app()
 
 # Only run the app if this file is run directly
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    host = os.getenv('HOST', '0.0.0.0')
+    port = int(os.getenv('PORT', 5000))
+    app.run(host=host, port=port)
