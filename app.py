@@ -14,6 +14,7 @@ import platform
 import logging
 import time
 from datetime import timedelta
+import traceback
 
 # Configure logging first
 logging.basicConfig(
@@ -47,6 +48,7 @@ from flask_migrate import Migrate
 from flask_compress import Compress
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from sqlalchemy import text
 
 # Import template helpers
 from template_helpers import init_template_helpers
@@ -104,6 +106,30 @@ def register_blueprints(app):
     app.register_blueprint(face_upload)
     logger.info("All blueprints registered successfully")
 
+def test_db_connection(app):
+    """Test database connection and log detailed information."""
+    try:
+        logger.info("Testing database connection...")
+        with app.app_context():
+            # Test basic connection
+            result = db.session.execute(text('SELECT 1'))
+            logger.info("Basic database connection successful")
+            
+            # Get database version
+            version = db.session.execute(text('SELECT version()')).scalar()
+            logger.info(f"Database version: {version}")
+            
+            # Get connection info
+            conn = db.engine.raw_connection()
+            logger.info(f"Database connection info: {conn.info}")
+            conn.close()
+            
+            return True
+    except Exception as e:
+        logger.error(f"Database connection test failed: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return False
+
 def create_app(config_object=None):
     """Create and configure the Flask application."""
     logger.info("Creating Flask application...")
@@ -147,6 +173,10 @@ def create_app(config_object=None):
     init_extensions(app)
     logger.info("Extensions initialized")
     
+    # Test database connection
+    if not test_db_connection(app):
+        logger.error("Failed to connect to database. Application may not function correctly.")
+    
     # Setup CORS before registering blueprints
     logger.info("Setting up CORS...")
     app = setup_cors(app)
@@ -181,7 +211,7 @@ def create_app(config_object=None):
     def health_check():
         try:
             # Test database connection
-            db.session.execute('SELECT 1')
+            db.session.execute(text('SELECT 1'))
             return jsonify({
                 "status": "healthy",
                 "database": "connected"
@@ -216,6 +246,7 @@ def create_app(config_object=None):
             logger.info("Successfully created/verified database tables")
         except Exception as e:
             logger.error(f"Error creating database tables: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
     
     # Initialize template helpers
