@@ -38,7 +38,6 @@ RUN apt-get update && \
     unzip \
     nodejs \
     npm \
-    netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy frontend files and build
@@ -83,38 +82,5 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
-# Create a startup script
-RUN echo '#!/bin/bash\n\
-echo "Starting application..."\n\
-echo "Current directory: $(pwd)"\n\
-echo "Directory contents:"\n\
-ls -la\n\
-echo "Environment variables:"\n\
-env | sort\n\
-\n\
-# Check if port is available\n\
-echo "Checking if port 5000 is available..."\n\
-nc -z 0.0.0.0 5000\n\
-if [ $? -eq 0 ]; then\n\
-    echo "Port 5000 is already in use"\n\
-    exit 1\n\
-else\n\
-    echo "Port 5000 is available"\n\
-fi\n\
-\n\
-echo "Starting gunicorn..."\n\
-exec gunicorn \\\n\
-    --bind 0.0.0.0:5000 \\\n\
-    --workers 1 \\\n\
-    --worker-class gevent \\\n\
-    --timeout 120 \\\n\
-    --access-logfile - \\\n\
-    --error-logfile - \\\n\
-    --log-level debug \\\n\
-    --preload \\\n\
-    --reload \\\n\
-    app:app\n\
-' > /app/start.sh && chmod +x /app/start.sh
-
-# Run the startup script
-CMD ["/app/start.sh"] 
+# Run gunicorn directly
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--worker-class", "gevent", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "debug", "app:app"] 
