@@ -82,5 +82,5 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
-# Run gunicorn directly
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--worker-class", "gevent", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", "--log-level", "debug", "app:app"] 
+# Run the startup script
+CMD ["python", "start.py"] 
