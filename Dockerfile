@@ -82,15 +82,34 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
-# Create a startup script
-RUN echo '#!/bin/bash\n\
-echo "Starting application..."\n\
-echo "Current directory: $(pwd)"\n\
-echo "Directory contents:"\n\
-ls -la\n\
-echo "Starting gunicorn..."\n\
-exec gunicorn --bind 0.0.0.0:5000 --workers 1 --worker-class gevent --worker-connections 1000 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level debug --capture-output --enable-stdio-inheritance --preload app:app\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Create a Python startup script
+RUN echo 'import os\n\
+import sys\n\
+import logging\n\
+from app import app\n\
+\n\
+logging.basicConfig(level=logging.DEBUG)\n\
+logger = logging.getLogger(__name__)\n\
+\n\
+def main():\n\
+    try:\n\
+        logger.info("Starting application...")\n\
+        logger.info(f"Current directory: {os.getcwd()}")\n\
+        logger.info(f"Directory contents: {os.listdir(".")}")\n\
+        logger.info(f"Environment variables: {dict(os.environ)}")\n\
+        \n\
+        host = os.getenv("HOST", "0.0.0.0")\n\
+        port = int(os.getenv("PORT", 5000))\n\
+        \n\
+        logger.info(f"Binding to {host}:{port}")\n\
+        app.run(host=host, port=port, debug=False)\n\
+    except Exception as e:\n\
+        logger.error(f"Error starting application: {e}", exc_info=True)\n\
+        sys.exit(1)\n\
+\n\
+if __name__ == "__main__":\n\
+    main()\n\
+' > /app/run.py
 
-# Run the startup script
-CMD ["/app/start.sh"] 
+# Run the Python script
+CMD ["python", "/app/run.py"] 
