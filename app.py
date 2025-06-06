@@ -15,6 +15,7 @@ import logging
 import time
 from datetime import timedelta
 import traceback
+import socket
 
 # Configure logging first
 logging.basicConfig(
@@ -311,5 +312,16 @@ logger.info("Application instance created")
 if __name__ == '__main__':
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 5000))
+    
+    # Check if port is available
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((host, port))
+        sock.close()
+        logger.info(f"Port {port} is available")
+    except socket.error as e:
+        logger.error(f"Port {port} is not available: {e}")
+        raise
+    
     logger.info(f"Starting development server on {host}:{port}")
-    app.run(host=host, port=port)
+    app.run(host=host, port=port, threaded=True)
