@@ -112,17 +112,27 @@ def test_db_connection(app):
         logger.info("Testing database connection...")
         with app.app_context():
             # Test basic connection
+            logger.info("Attempting basic database connection...")
             result = db.session.execute(text('SELECT 1'))
             logger.info("Basic database connection successful")
             
             # Get database version
+            logger.info("Getting database version...")
             version = db.session.execute(text('SELECT version()')).scalar()
             logger.info(f"Database version: {version}")
             
             # Get connection info
+            logger.info("Getting connection info...")
             conn = db.engine.raw_connection()
             logger.info(f"Database connection info: {conn.info}")
             conn.close()
+            
+            # Test connection pool
+            logger.info("Testing connection pool...")
+            pool = db.engine.pool
+            logger.info(f"Pool size: {pool.size()}")
+            logger.info(f"Checked out connections: {pool.checkedin()}")
+            logger.info(f"Available connections: {pool.checkedout()}")
             
             return True
     except Exception as e:
@@ -169,13 +179,20 @@ def create_app(config_object=None):
     
     # Initialize extensions first
     logger.info("Initializing extensions...")
-    from extensions import init_extensions
-    init_extensions(app)
-    logger.info("Extensions initialized")
+    try:
+        from extensions import init_extensions
+        init_extensions(app)
+        logger.info("Extensions initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize extensions: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise
     
     # Test database connection
+    logger.info("Testing database connection...")
     if not test_db_connection(app):
         logger.error("Failed to connect to database. Application may not function correctly.")
+        raise Exception("Database connection failed")
     
     # Setup CORS before registering blueprints
     logger.info("Setting up CORS...")
