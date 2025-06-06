@@ -108,37 +108,51 @@ def register_blueprints(app):
 
 def test_db_connection(app):
     """Test database connection and log detailed information."""
-    try:
-        logger.info("Testing database connection...")
-        with app.app_context():
-            # Test basic connection
-            logger.info("Attempting basic database connection...")
-            result = db.session.execute(text('SELECT 1'))
-            logger.info("Basic database connection successful")
+    max_retries = 3
+    retry_delay = 5  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Testing database connection (attempt {attempt + 1}/{max_retries})...")
+            with app.app_context():
+                # Test basic connection
+                logger.info("Attempting basic database connection...")
+                result = db.session.execute(text('SELECT 1'))
+                logger.info("Basic database connection successful")
+                
+                # Get database version
+                logger.info("Getting database version...")
+                version = db.session.execute(text('SELECT version()')).scalar()
+                logger.info(f"Database version: {version}")
+                
+                # Get connection info
+                logger.info("Getting connection info...")
+                conn = db.engine.raw_connection()
+                logger.info(f"Database connection info: {conn.info}")
+                conn.close()
+                
+                # Test connection pool
+                logger.info("Testing connection pool...")
+                pool = db.engine.pool
+                logger.info(f"Pool size: {pool.size()}")
+                logger.info(f"Checked out connections: {pool.checkedin()}")
+                logger.info(f"Available connections: {pool.checkedout()}")
+                
+                logger.info("Database connection test successful")
+                return True
+                
+        except Exception as e:
+            logger.error(f"Database connection test failed (attempt {attempt + 1}/{max_retries}): {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             
-            # Get database version
-            logger.info("Getting database version...")
-            version = db.session.execute(text('SELECT version()')).scalar()
-            logger.info(f"Database version: {version}")
-            
-            # Get connection info
-            logger.info("Getting connection info...")
-            conn = db.engine.raw_connection()
-            logger.info(f"Database connection info: {conn.info}")
-            conn.close()
-            
-            # Test connection pool
-            logger.info("Testing connection pool...")
-            pool = db.engine.pool
-            logger.info(f"Pool size: {pool.size()}")
-            logger.info(f"Checked out connections: {pool.checkedin()}")
-            logger.info(f"Available connections: {pool.checkedout()}")
-            
-            return True
-    except Exception as e:
-        logger.error(f"Database connection test failed: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return False
+            if attempt < max_retries - 1:
+                logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("All connection attempts failed")
+                return False
+    
+    return False
 
 def create_app(config_object=None):
     """Create and configure the Flask application."""
@@ -155,16 +169,21 @@ def create_app(config_object=None):
     if app.config['SQLALCHEMY_DATABASE_URI'].startswith('https://'):
         app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('https://', 'postgresql://')
     
-    # Add connection timeout settings
+    # Add connection timeout settings with retry logic
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_size': 5,
         'max_overflow': 10,
         'pool_timeout': 30,
         'pool_recycle': 1800,
+        'pool_pre_ping': True,  # Enable connection health checks
         'connect_args': {
-            'connect_timeout': 10,
+            'connect_timeout': 30,  # Increased timeout
             'application_name': 'dopple_app',
-            'options': '-c statement_timeout=30000'  # 30 second timeout
+            'options': '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=30000',  # 30 second timeout
+            'keepalives': 1,
+            'keepalives_idle': 30,
+            'keepalives_interval': 10,
+            'keepalives_count': 5
         }
     }
     
