@@ -15,6 +15,7 @@ from flask import session, current_app
 import logging
 import time
 import traceback
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -56,25 +57,68 @@ def init_extensions(app):
         app.config['SESSION_COOKIE_SAMESITE'] = app.config.get('SESSION_COOKIE_SAMESITE', 'Lax')
         session_store.init_app(app)
         
-        # Configure Talisman for development
+        # Configure Talisman for production
         logger.info("Configuring Talisman...")
+        is_production = app.config.get('FLASK_ENV') == 'production'
         talisman.init_app(
             app,
-            force_https=False,  # Don't force HTTPS in development
-            strict_transport_security=False,  # Disable HSTS in development
-            session_cookie_secure=False,  # Allow non-HTTPS cookies in development
-            content_security_policy=None,  # Disable CSP in development
-            feature_policy=None,  # Disable feature policy in development
+            force_https=is_production,  # Force HTTPS in production
+            content_security_policy={
+                'default-src': "'self'",
+                'img-src': "'self' data: https:",
+                'script-src': "'self' 'unsafe-inline' 'unsafe-eval'",
+                'style-src': "'self' 'unsafe-inline'",
+                'connect-src': "'self' https: wss:",
+                'font-src': "'self' data: https:",
+                'frame-src': "'self'",
+                'media-src': "'self' https:",
+                'object-src': "'none'",
+                'base-uri': "'self'",
+                'form-action': "'self'",
+                'frame-ancestors': "'none'",
+                'upgrade-insecure-requests': '1' if is_production else None
+            },
+            session_cookie_secure=is_production,  # Secure cookies in production
+            strict_transport_security=is_production,  # HSTS in production
+            feature_policy={
+                'geolocation': "'none'",
+                'midi': "'none'",
+                'sync-xhr': "'self'",
+                'microphone': "'none'",
+                'camera': "'none'",
+                'magnetometer': "'none'",
+                'gyroscope': "'none'",
+                'speaker': "'self'",
+                'fullscreen': "'self'",
+                'payment': "'none'",
+                'usb': "'none'"
+            }
         )
         
         logger.info("Initializing login manager...")
         login_manager.init_app(app)
+        login_manager.login_view = 'auth.login'
+        login_manager.login_message_category = 'info'
         
         logger.info("Initializing moment...")
         moment.init_app(app)
         
         # Initialize limiter after app context is available
         logger.info("Initializing rate limiter...")
+        is_production = app.config.get('FLASK_ENV') == 'production'
+        
+        if is_production:
+            # Use Redis in production
+            app.config['RATELIMIT_STORAGE_URL'] = app.config.get('REDIS_URL', 'redis://localhost:6379/0')
+            app.config['RATELIMIT_STORAGE_OPTIONS'] = {
+                'socket_timeout': 5,
+                'socket_connect_timeout': 5,
+                'retry_on_timeout': True
+            }
+        else:
+            # Use memory storage in development
+            app.config['RATELIMIT_STORAGE_URL'] = 'memory://'
+        
         limiter.init_app(app)
         
         # Initialize SQLAlchemy and Migrate with PostgreSQL-specific settings
@@ -90,7 +134,9 @@ def init_extensions(app):
             # This will create tables if they don't exist
             logger.info("Importing models...")
             from models.user import User  # noqa: F401
-            from models.face import Face  # noqa: F401
+            from models.social.post import Post, PostImage, PostReaction  # noqa: F401
+            from models.social.comment import Comment  # noqa: F401
+            from models.social.like import Like  # noqa: F401
             
             # Try to create tables with a timeout
             start_time = time.time()
@@ -98,21 +144,15 @@ def init_extensions(app):
             
             try:
                 logger.info("Creating database tables...")
+                # Create all tables using metadata
                 db.create_all()
                 logger.info("Database tables created successfully")
+                
+                # Skip migrations for now since we're using create_all()
+                logger.info("Skipping migrations as tables are created with create_all()")
+                
             except Exception as e:
-                logger.error(f"Error creating tables: {str(e)}")
-                logger.error(f"Traceback: {traceback.format_exc()}")
-                raise
-            
-            # Run migrations with timeout
-            try:
-                logger.info("Running database migrations...")
-                from flask_migrate import upgrade
-                upgrade()
-                logger.info("Database migrations completed successfully")
-            except Exception as e:
-                logger.error(f"Error running migrations: {str(e)}")
+                logger.error(f"Error during database setup: {str(e)}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 raise
             

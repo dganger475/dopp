@@ -14,7 +14,6 @@ import re
 
 from flask import current_app, url_for
 
-from models.social import ClaimedProfile
 from utils.db.database import get_db_connection
 from utils.face.metadata import enhance_face_with_metadata, get_metadata_for_face
 from utils.face.recognition import extract_face_encoding, find_similar_faces
@@ -200,7 +199,7 @@ class Face(db.Model):
 
     @classmethod
     def get_user_matches(cls, user_id, limit=50):
-        """Get faces claimed by a specific user."""
+        """Get matches for a user."""
         try:
             return cls.query.filter_by(user_id=user_id).limit(limit).all()
         except Exception as e:
@@ -209,52 +208,47 @@ class Face(db.Model):
 
     @classmethod
     def find_matches(cls, image_path, top_k=50):
-        """Find similar faces using face recognition."""
+        """Find similar faces in the database."""
         try:
-            from utils.face.recognition import find_similar_faces
-            return find_similar_faces(image_path, top_k=top_k)
+            face_encoding = extract_face_encoding(image_path)
+            if face_encoding is None:
+                return []
+            return find_similar_faces(face_encoding, top_k=top_k)
         except Exception as e:
-            logging.error(f"Error finding face matches: {e}")
+            logging.error(f"Error finding matches: {e}")
             return []
 
-    def get_claimed_profile(self):
-        """Get the claimed profile for this face."""
-        if not self.is_registered:
-            return None
-        return ClaimedProfile.query.filter_by(face_id=self.id).first()
-
     def to_dict(self, include_private=False):
-        """Convert face record to dictionary."""
+        """Convert face object to dictionary with optional private data."""
         data = {
             'id': self.id,
             'user_id': self.user_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'is_registered': self.is_registered
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         if include_private:
-            data['face_encoding'] = self.face_encoding.hex()
+            data['face_encoding'] = self.face_encoding
         return data
 
     @classmethod
     def get_states_list(cls):
-        """Get list of all US states."""
+        """Get a list of all US states."""
         return cls.get_unique_locations()
 
     @staticmethod
     def get_decades_list():
-        """Get list of all decades."""
+        """Get a list of all decades."""
         return [
             "1940s", "1950s", "1960s", "1970s", "1980s", "1990s", "2000s", "2010s", "2020s"
         ]
 
     @classmethod
     def get_random_selection(cls, count=10):
-        """Get random selection of faces."""
+        """Get a random selection of faces."""
         try:
             return cls.query.order_by(db.func.random()).limit(count).all()
         except Exception as e:
-            logging.error(f"Error getting random faces: {e}")
+            logging.error(f"Error getting random selection: {e}")
             return []
 
     @classmethod

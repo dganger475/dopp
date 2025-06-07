@@ -23,7 +23,7 @@ import face_recognition
 import numpy as np
 
 from models.face import Face
-from models.social import ClaimedProfile, Post
+from models.social.post import Post
 from extensions import db
 from models.user import User
 from models.user_match import UserMatch
@@ -39,7 +39,6 @@ from utils.search_helpers import (
     resolve_profile_image_path,
 )
 from utils.face.recognition import extract_face_encoding, find_similar_faces_faiss, calculate_similarity
-from models.user_match import UserMatch
 from utils.serializers import serialize_match_card
 
 search = Blueprint("search", __name__)

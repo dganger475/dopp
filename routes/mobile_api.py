@@ -26,6 +26,7 @@ import numpy as np
 from models.user import User
 from utils.db.database import get_db_connection, get_users_db_connection
 from utils.index.faiss_manager import faiss_index_manager
+from models.social.post import Post
 
 # from routes.face_matching_new import query_faces_directly  # Removed: file deleted, use canonical search logic
 
@@ -223,26 +224,17 @@ def get_profile(user):
     from models.social import ClaimedProfile
     from models.user_match import UserMatch
 
-    # Get claimed profiles
-    claimed_profiles = ClaimedProfile.get_by_user_id(user.id)
-    claimed_count = len(claimed_profiles) if claimed_profiles else 0
-
     # Get matches added to profile
     user_matches = UserMatch.get_by_user_id(user.id)
     added_count = len(user_matches) if user_matches else 0
 
     # Total count (avoid duplicates)
-    claimed_filenames = (
-        [profile.face_filename for profile in claimed_profiles]
-        if claimed_profiles
-        else []
-    )
     added_filenames = (
         [match.match_filename for match in user_matches] if user_matches else []
     )
 
     # Combine both sets to avoid duplicates
-    all_match_filenames = set(claimed_filenames + added_filenames)
+    all_match_filenames = set(added_filenames)
     total_matches = len(all_match_filenames)
 
     # Get followers and following count
@@ -547,10 +539,6 @@ def get_user_matches(user):
         user_matches = UserMatch.get_by_user_id(user.id, respect_privacy=False)
         logging.info(f"Found {len(user_matches) if user_matches else 0} user matches")
         
-        # Get claimed profiles
-        claimed_profiles = ClaimedProfile.get_by_user_id(user.id)
-        logging.info(f"Found {len(claimed_profiles) if claimed_profiles else 0} claimed profiles")
-
         # Format matches for response
         formatted_matches = []
         processed_filenames = set()  # Track processed filenames to avoid duplicates
@@ -601,56 +589,6 @@ def get_user_matches(user):
                     finally:
                         conn.close()
 
-        # Add claimed profiles
-        if claimed_profiles:
-            for profile in claimed_profiles:
-                if not profile.face_filename:
-                    continue
-                    
-                # Skip if we've already processed this filename
-                if profile.face_filename in processed_filenames:
-                    continue
-                    
-                # Get the face data and the associated user match to get the actual similarity score
-                face_data = profile.get_face_data()
-                if face_data:
-                    # Get the user match to find the actual similarity score
-                    user_match = None
-                    conn = get_db_connection()
-                    if conn:
-                        try:
-                            cursor = conn.cursor()
-                            cursor.execute(
-                                """
-                                SELECT um.similarity 
-                                FROM user_matches um 
-                                WHERE um.match_filename = ? AND um.user_id = ?
-                                """,
-                                (profile.face_filename, user.id)
-                            )
-                            match_data = cursor.fetchone()
-                            if match_data:
-                                user_match = dict(match_data)
-                        except Exception as e:
-                            logging.error(f"Error getting user match for claimed profile: {e}")
-                        finally:
-                            conn.close()
-                    
-                    # Set the claimed profile data
-                    face_data["is_claimed"] = True
-                    # Use the actual similarity score if available, otherwise use None
-                    face_data["similarity"] = user_match.get("similarity") if user_match else None
-                    face_data["match_id"] = f"claimed_{profile.id}"
-                    face_data["is_visible"] = True
-                    face_data["privacy_level"] = "public"
-                    face_data["added_at"] = profile.claimed_at
-                    
-                    # Add to processed filenames
-                    processed_filenames.add(profile.face_filename)
-                    
-                    # Add to results
-                    formatted_matches.append(face_data)
-
         # Sort matches by added_at in descending order (newest first)
         formatted_matches.sort(key=lambda x: x.get("added_at", ""), reverse=True)
         
@@ -682,3 +620,37 @@ def ping():
 
 
 # Add more endpoints as needed for the mobile app
+
+@mobile_api.route('/user/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    """Get user details."""
+    try:
+        user = User.get_by_id(user_id)
+        if user:
+            return jsonify(user.to_dict())
+        return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting user: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@mobile_api.route('/posts', methods=['GET'])
+def get_posts():
+    """Get posts."""
+    try:
+        posts = Post.get_all()
+        return jsonify([post.to_dict() for post in posts])
+    except Exception as e:
+        logger.error(f"Error getting posts: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@mobile_api.route('/post/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    """Get post details."""
+    try:
+        post = Post.get_by_id(post_id)
+        if post:
+            return jsonify(post.to_dict())
+        return jsonify({"error": "Post not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting post: {e}")
+        return jsonify({"error": str(e)}), 500

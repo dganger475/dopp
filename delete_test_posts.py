@@ -1,7 +1,7 @@
 """Script to delete test posts from the database"""
 
 from utils.db.database import get_users_db_connection
-from models.post import Post
+from models.social.post import Post
 
 def delete_test_posts():
     """Delete test posts from the database"""

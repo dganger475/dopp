@@ -26,6 +26,8 @@ from utils.image_paths import normalize_profile_image_path
 from utils.search_helpers import get_enriched_faiss_matches, resolve_profile_image_path
 from utils.index.faiss_manager import faiss_index_manager
 from utils.serializers import serialize_match_card
+from models.user import User
+from models.social.post import Post
 
 api = Blueprint("api", __name__)
 
@@ -123,22 +125,15 @@ def get_matches_count():
     # Count user matches
     try:
         # Get all matches (claimed + added)
-        from models.social import ClaimedProfile
-
-        # Get claimed profiles
-        claimed_profiles = ClaimedProfile.get_by_user_id(user_id)
-        claimed_count = len(claimed_profiles) if claimed_profiles else 0
-
         # Get matches added to profile
         user_matches = UserMatch.get_by_user_id(user_id)
         added_count = len(user_matches) if user_matches else 0
 
         # Total count (avoid duplicates)
-        claimed_filenames = [profile.face_filename for profile in claimed_profiles]
         added_filenames = [match.match_filename for match in user_matches]
 
         # Combine both sets to avoid duplicates
-        all_match_filenames = set(claimed_filenames + added_filenames)
+        all_match_filenames = set(added_filenames)
         total_count = len(all_match_filenames)
 
         current_app.logger.info(f"User {user_id} has {total_count} matches in total")
@@ -776,3 +771,37 @@ def api_feed_like_post(post_id):
             'success': False,
             'error': 'Failed to like post'
         }), 500
+
+@api.route('/user/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    """Get user details."""
+    try:
+        user = User.get_by_id(user_id)
+        if user:
+            return jsonify(user.to_dict())
+        return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting user: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/posts', methods=['GET'])
+def get_posts():
+    """Get posts."""
+    try:
+        posts = Post.get_all()
+        return jsonify([post.to_dict() for post in posts])
+    except Exception as e:
+        logger.error(f"Error getting posts: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/post/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    """Get post details."""
+    try:
+        post = Post.get_by_id(post_id)
+        if post:
+            return jsonify(post.to_dict())
+        return jsonify({"error": "Post not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting post: {e}")
+        return jsonify({"error": str(e)}), 500

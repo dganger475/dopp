@@ -1,19 +1,18 @@
 """
-Social models package for handling social features like posts, comments, reactions, etc.
+Social models package for DoppleGänger
+==============================
+
+This package contains all the social models for the application.
 """
 
 from .post import Post
 from .comment import Comment
-from .reaction import Reaction
-from .notification import Notification
-from .claimed_profile import ClaimedProfile
 from .like import Like
+from .notification import Notification
 
 __all__ = [
     'Post',
     'Comment',
-    'Reaction',
+    'Like',
     'Notification',
-    'ClaimedProfile',
-    'Like'
 ] 

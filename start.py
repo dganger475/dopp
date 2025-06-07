@@ -26,6 +26,20 @@ def main():
     for key, value in os.environ.items():
         logger.info(f"{key}={value}")
 
+    # Start Redis server
+    logger.info("Starting Redis server...")
+    try:
+        redis_process = subprocess.Popen(
+            ["redis-server", "--daemonize", "yes"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        redis_process.wait(timeout=5)
+        logger.info("Redis server started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start Redis server: {e}")
+        sys.exit(1)
+
     # Check if port is available
     port = int(os.getenv("PORT", 5000))
     logger.info(f"Checking if port {port} is available...")

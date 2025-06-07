@@ -10,10 +10,13 @@ This module contains routes related to post interactions, including:
 import logging
 from flask import Blueprint, current_app, jsonify, request, redirect, url_for, flash, session
 from flask_login import current_user, login_required
-from models.social import Like, Comment, Post, ClaimedProfile, Notification
-from models.user import User
+from models.social import Like, Comment, Post, Notification
 
 interactions = Blueprint('interactions', __name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- Section: Post Interaction Routes ---
 
@@ -60,7 +63,7 @@ def like_post(post_id):
         return jsonify({"message": message, "is_liked": is_liked})
 
     except Exception as e:
-        current_app.logger.error(f"Error liking/unliking post {post_id} for user {user_id}: {e}")
+        logger.error(f"Error liking/unliking post {post_id} for user {user_id}: {e}")
         return jsonify({"error": "An error occurred"}), 500
 
 @interactions.route("/add_comment/<int:post_id>", methods=["POST"])
@@ -100,7 +103,7 @@ def add_comment(post_id):
             flash("Error adding comment.", "error")
 
     except Exception as e:
-        current_app.logger.error(f"Error adding comment to post {post_id} for user {user_id}: {e}")
+        logger.error(f"Error adding comment to post {post_id} for user {user_id}: {e}")
         flash("An error occurred while adding your comment.", "error")
 
     # Assuming a redirect back to the feed or post view
@@ -148,7 +151,7 @@ def delete_comment(comment_id):
             return redirect(request.referrer or url_for("social.feed_page"))
 
     except Exception as e:
-        current_app.logger.error(f"Error deleting comment {comment_id} for user {user_id}: {e}")
+        logger.error(f"Error deleting comment {comment_id} for user {user_id}: {e}")
         if request.method == "DELETE":
              return jsonify({"error": "An error occurred"}), 500
         else:
@@ -179,7 +182,7 @@ def share_comparison():
             flash("Error sharing comparison.", "error")
 
     except Exception as e:
-        current_app.logger.error(f"Error sharing comparison {comparison_id} for user {user_id}: {e}")
+        logger.error(f"Error sharing comparison {comparison_id} for user {user_id}: {e}")
         flash("An error occurred while sharing the comparison.", "error")
 
     return redirect(request.referrer or url_for("social.feed_page"))
@@ -220,7 +223,7 @@ def share_claimed_profile(filename):
             flash("Error sharing claimed profile.", "error")
 
     except Exception as e:
-        current_app.logger.error(f"Error sharing claimed profile {filename} for user {user_id}: {e}")
+        logger.error(f"Error sharing claimed profile {filename} for user {user_id}: {e}")
         flash("An error occurred while sharing the claimed profile.", "error")
 
     return redirect(request.referrer or url_for("social.feed_page"))

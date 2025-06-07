@@ -15,7 +15,6 @@ from PIL import Image  # Explicit import for Image
 
 import face_recognition
 from models.face import Face
-from models.social import ClaimedProfile  # Import ClaimedProfile
 from utils.face.recognition import rebuild_faiss_index, extract_face_encoding
 from utils.db.database import get_db_connection # Added import
 from utils.face.detection import detect_faces
@@ -169,25 +168,6 @@ def index_profile_face(filename, user_id, username):
                 )
                 # Continue, as the main face record and ClaimedProfile will still be created
 
-            # Claim the profile face for the user
-            claimed_profile = ClaimedProfile.create(
-                user_id=user_id,
-                face_id=face.id,
-                face_filename=faces_filename,
-                relationship="Profile Image",  # Specific relationship for profile images
-                caption=f"{username}'s profile picture",  # Optional: a default caption
-            )
-
-            if claimed_profile:
-                current_app.logger.info(
-                    f"Successfully created ClaimedProfile (ID: {claimed_profile.id}) for face {faces_filename} by user_id: {user_id}"
-                )
-            else:
-                current_app.logger.error(
-                    f"Failed to create ClaimedProfile for face {faces_filename} by user_id: {user_id}"
-                )
-                # Continue, as the face itself was indexed. The claim can be fixed/retried later if necessary.
-
             # Rebuild FAISS index
             rebuild_faiss_index(app=current_app)
             return faces_filename
@@ -215,3 +195,35 @@ def index_profile_face(filename, user_id, username):
             f"Error indexing profile face for user_id {user_id}, filename {filename}: {e}\n{traceback.format_exc()}"
         )
         return None
+
+def get_face_by_filename(filename):
+    """Get a face by its filename."""
+    try:
+        return Face.get_by_filename(filename)
+    except Exception as e:
+        logger.error(f"Error fetching face by filename: {e}")
+        return None
+
+def get_unique_locations():
+    """Get a list of all 50 US states."""
+    return Face.get_unique_locations()
+
+def get_unique_decades():
+    """Get a list of unique decades from face data."""
+    return Face.get_unique_decades()
+
+def search_faces(criteria=None, limit=10):
+    """Search for faces based on criteria."""
+    return Face.search(criteria, limit)
+
+def get_user_matches(user_id, limit=50):
+    """Get matches for a user."""
+    return Face.get_user_matches(user_id, limit)
+
+def find_matches(image_path, top_k=50):
+    """Find similar faces in the database."""
+    return Face.find_matches(image_path, top_k)
+
+def get_random_selection(count=10):
+    """Get a random selection of faces."""
+    return Face.get_random_selection(count)

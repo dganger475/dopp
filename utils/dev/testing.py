@@ -116,7 +116,7 @@ class MockDataGenerator:
 def create_test_data(db) -> Dict[str, Any]:
     """Create a set of test data in the database."""
     from models.user import User
-    from models.post import Post
+    from models.social.post import Post
     from models.comment import Comment
     
     # Create test users

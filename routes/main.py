@@ -14,6 +14,7 @@ Notes:
 from datetime import datetime, timedelta
 
 import jwt
+import logging
 
 # === Third-Party Imports ===
 from flask import (
@@ -28,15 +29,18 @@ from flask import (
 )
 from werkzeug.security import check_password_hash
 
-from models.social import ClaimedProfile, Post
+from models.user import User
+from models.social.post import Post
 
 # === Project Imports ===
-from models.user import User
-# from routes.social import create_post as social_create_post
 from routes.social import social
 
 # === Blueprint Definition ===
 main = Blueprint("main", __name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # =============================
@@ -200,3 +204,46 @@ def terms():
 def help():
     """Help page."""
     return render_template("help.html")
+
+
+@main.route('/')
+def index():
+    """Home page."""
+    return jsonify({"message": "Welcome to DoppleGänger!"})
+
+
+@main.route('/user/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    """Get user details."""
+    try:
+        user = User.get_by_id(user_id)
+        if user:
+            return jsonify(user.to_dict())
+        return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting user: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@main.route('/posts', methods=['GET'])
+def get_posts():
+    """Get posts."""
+    try:
+        posts = Post.get_all()
+        return jsonify([post.to_dict() for post in posts])
+    except Exception as e:
+        logger.error(f"Error getting posts: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@main.route('/post/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    """Get post details."""
+    try:
+        post = Post.get_by_id(post_id)
+        if post:
+            return jsonify(post.to_dict())
+        return jsonify({"error": "Post not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting post: {e}")
+        return jsonify({"error": str(e)}), 500

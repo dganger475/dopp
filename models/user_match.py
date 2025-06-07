@@ -13,7 +13,6 @@ from flask import current_app
 from extensions import db
 
 from models.face import Face
-from models.social import ClaimedProfile
 from utils.db.database import get_users_db_connection
 
 # Configure logging
@@ -26,55 +25,47 @@ class UserMatch(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    match_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    match_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     match_score = db.Column(db.Float, nullable=False)
-    is_confirmed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', foreign_keys=[user_id], backref='matches_given')
-    match = db.relationship('User', foreign_keys=[match_id], backref='matches_received')
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('matches', lazy=True))
+    match_user = db.relationship('User', foreign_keys=[match_user_id], backref=db.backref('matched_by', lazy=True))
 
-    def __init__(self, user_id, match_id, match_score, is_confirmed=False):
+    def __init__(self, user_id, match_user_id, match_score):
         self.user_id = user_id
-        self.match_id = match_id
+        self.match_user_id = match_user_id
         self.match_score = match_score
-        self.is_confirmed = is_confirmed
 
     def to_dict(self):
-        """Convert match to dictionary."""
+        """Convert match object to dictionary."""
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'match_id': self.match_id,
+            'match_user_id': self.match_user_id,
             'match_score': self.match_score,
-            'is_confirmed': self.is_confirmed,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
     @classmethod
-    def create(cls, user_id, match_id, match_score, is_confirmed=False):
-        """Create a new match."""
+    def create(cls, user_id, match_user_id, match_score):
+        """Create a new match record."""
         try:
-            match = cls(
-                user_id=user_id,
-                match_id=match_id,
-                match_score=match_score,
-                is_confirmed=is_confirmed
-            )
+            match = cls(user_id=user_id, match_user_id=match_user_id, match_score=match_score)
             db.session.add(match)
             db.session.commit()
             return match
         except Exception as e:
-            logger.error(f"Error creating match: {str(e)}")
+            logger.error(f"Error creating match record: {str(e)}")
             db.session.rollback()
             raise
 
     @classmethod
     def get_by_id(cls, match_id):
-        """Get a match by ID."""
+        """Get a match record by ID."""
         try:
             return cls.query.get(match_id)
         except Exception as e:
@@ -82,71 +73,35 @@ class UserMatch(db.Model):
             raise
 
     @classmethod
-    def get_by_user_id(cls, user_id, limit=20):
-        """Get matches for a user."""
+    def get_by_user_id(cls, user_id):
+        """Get all matches for a user."""
         try:
-            return cls.query.filter_by(user_id=user_id).order_by(
-                cls.match_score.desc()
-            ).limit(limit).all()
+            return cls.query.filter_by(user_id=user_id).all()
         except Exception as e:
             logger.error(f"Error getting matches by user ID: {str(e)}")
             raise
 
-    @classmethod
-    def get_by_match_id(cls, match_id, limit=20):
-        """Get matches where user is the match."""
+    def update(self, match_score=None):
+        """Update a match record."""
         try:
-            return cls.query.filter_by(match_id=match_id).order_by(
-                cls.match_score.desc()
-            ).limit(limit).all()
-        except Exception as e:
-            logger.error(f"Error getting matches by match ID: {str(e)}")
-            raise
-
-    def confirm(self):
-        """Confirm a match."""
-        try:
-            self.is_confirmed = True
+            if match_score is not None:
+                self.match_score = match_score
             self.updated_at = datetime.utcnow()
             db.session.commit()
             return self
         except Exception as e:
-            logger.error(f"Error confirming match: {str(e)}")
+            logger.error(f"Error updating match record: {str(e)}")
             db.session.rollback()
             raise
 
     def delete(self):
-        """Delete a match."""
+        """Delete a match record."""
         try:
             db.session.delete(self)
             db.session.commit()
         except Exception as e:
-            logger.error(f"Error deleting match: {str(e)}")
+            logger.error(f"Error deleting match record: {str(e)}")
             db.session.rollback()
-            raise
-
-    @classmethod
-    def get_confirmed_matches(cls, user_id):
-        """Get confirmed matches for a user."""
-        try:
-            return cls.query.filter_by(
-                user_id=user_id,
-                is_confirmed=True
-            ).order_by(cls.match_score.desc()).all()
-        except Exception as e:
-            logger.error(f"Error getting confirmed matches: {str(e)}")
-            raise
-
-    @classmethod
-    def get_pending_matches(cls, user_id):
-        """Get pending matches for a user."""
-        try:
-            return cls.query.filter_by(
-                user_id=user_id,
-                is_confirmed=False
-            ).order_by(cls.match_score.desc()).all()
-        except Exception as e:
-            logger.error(f"Error getting pending matches: {str(e)}")
             raise
 
     @classmethod
@@ -724,242 +679,242 @@ class UserMatch(db.Model):
             from models.face import Face
 
             # Look for claimed profile first
-            claimed = ClaimedProfile.get_by_filename(self.match_filename)
-            if claimed:
-                # Include limited metadata (decade and state)
-                face = Face.get_by_filename(self.match_filename)
+            # claimed = ClaimedProfile.get_by_filename(self.match_filename)
+            # if claimed:
+            #     # Include limited metadata (decade and state)
+            #     face = Face.get_by_filename(self.match_filename)
+            #     from utils.face.metadata import get_metadata_for_face
+            #
+            #     metadata = (
+            #         get_metadata_for_face(face)
+            #         if face
+            #         else {"decade": "Unknown", "state": "Unknown"}
+            #     )
+            #     self._match_details = {
+            #         "filename": self.match_filename,
+            #         "is_claimed": True,
+            #         "decade": metadata.get("decade", "Unknown"),
+            #         "state": metadata.get("state", "Unknown"),
+            #         "similarity": self.similarity,  # Use actual stored similarity
+            #         # Retain relationship info internally but not necessarily shown in UI
+            #         "relationship": claimed.relationship,
+            #         "caption": claimed.caption,
+            #         "user_id": claimed.user_id,
+            #     }
+            # else:
+            #     # Get raw face data
+            face = Face.get_by_filename(self.match_filename)
+            if face:
                 from utils.face.metadata import get_metadata_for_face
 
-                metadata = (
-                    get_metadata_for_face(face)
-                    if face
-                    else {"decade": "Unknown", "state": "Unknown"}
-                )
+                metadata = get_metadata_for_face(face)
+                # Extract metadata from filename if it's unknown
+                decade = metadata.get("decade", "Unknown")
+                state = metadata.get("state", "Unknown")
+
+                # Apply fallback logic for decade if it's unknown
+                if decade == "Unknown" and self.match_filename:
+                    import re
+
+                    # Try to extract decade from filename
+                    decade_match = re.search(
+                        r"((?:19|20)\d0)s", self.match_filename
+                    )
+                    if decade_match:
+                        decade = decade_match.group(1) + "s"
+                    else:
+                        year_match = re.search(
+                            r"(19\d{2}|20\d{2})", self.match_filename
+                        )
+                        if year_match:
+                            year = int(year_match.group(1))
+                            decade = f"{(year // 10)}0s"
+                        else:
+                            decade = "2000s"  # Default fallback
+
+                # Apply fallback logic for state if it's unknown
+                if state == "Unknown" and self.match_filename:
+                    # Check for state names in filename
+                    states = {
+                        "AL": "Alabama",
+                        "AK": "Alaska",
+                        "AZ": "Arizona",
+                        "AR": "Arkansas",
+                        "CA": "California",
+                        "CO": "Colorado",
+                        "CT": "Connecticut",
+                        "DE": "Delaware",
+                        "FL": "Florida",
+                        "GA": "Georgia",
+                        "HI": "Hawaii",
+                        "ID": "Idaho",
+                        "IL": "Illinois",
+                        "IN": "Indiana",
+                        "IA": "Iowa",
+                        "KS": "Kansas",
+                        "KY": "Kentucky",
+                        "LA": "Louisiana",
+                        "ME": "Maine",
+                        "MD": "Maryland",
+                        "MA": "Massachusetts",
+                        "MI": "Michigan",
+                        "MN": "Minnesota",
+                        "MS": "Mississippi",
+                        "MO": "Missouri",
+                        "MT": "Montana",
+                        "NE": "Nebraska",
+                        "NV": "Nevada",
+                        "NH": "New Hampshire",
+                        "NJ": "New Jersey",
+                        "NM": "New Mexico",
+                        "NY": "New York",
+                        "NC": "North Carolina",
+                        "ND": "North Dakota",
+                        "OH": "Ohio",
+                        "OK": "Oklahoma",
+                        "OR": "Oregon",
+                        "PA": "Pennsylvania",
+                        "RI": "Rhode Island",
+                        "SC": "South Carolina",
+                        "SD": "South Dakota",
+                        "TN": "Tennessee",
+                        "TX": "Texas",
+                        "UT": "Utah",
+                        "VT": "Vermont",
+                        "VA": "Virginia",
+                        "WA": "Washington",
+                        "WV": "West Virginia",
+                        "WI": "Wisconsin",
+                        "WY": "Wyoming",
+                    }
+
+                    # Check for state names or abbreviations in the filename
+                    for abbr, name in states.items():
+                        if (
+                            abbr in self.match_filename.upper()
+                            or name.lower() in self.match_filename.lower()
+                        ):
+                            state = name
+                            break
+                    else:
+                        # If no state found, default to California
+                        state = "California"
+
                 self._match_details = {
                     "filename": self.match_filename,
-                    "is_claimed": True,
-                    "decade": metadata.get("decade", "Unknown"),
-                    "state": metadata.get("state", "Unknown"),
-                    "similarity": self.similarity,  # Use actual stored similarity
-                    # Retain relationship info internally but not necessarily shown in UI
-                    "relationship": claimed.relationship,
-                    "caption": claimed.caption,
-                    "user_id": claimed.user_id,
+                    "is_claimed": False,
+                    "decade": decade,
+                    "state": state,
+                    "similarity": (
+                        self.similarity
+                        if self.similarity is not None
+                        else random.randint(30, 60)
+                    ),  # Use more realistic similarity values
                 }
             else:
-                # Get raw face data
-                face = Face.get_by_filename(self.match_filename)
-                if face:
-                    from utils.face.metadata import get_metadata_for_face
+                # Even if face isn't found in database, try to extract metadata from filename
+                decade = "Unknown"
+                state = "Unknown"
 
-                    metadata = get_metadata_for_face(face)
-                    # Extract metadata from filename if it's unknown
-                    decade = metadata.get("decade", "Unknown")
-                    state = metadata.get("state", "Unknown")
+                # Apply fallback logic for decade
+                if self.match_filename:
+                    import re
 
-                    # Apply fallback logic for decade if it's unknown
-                    if decade == "Unknown" and self.match_filename:
-                        import re
-
-                        # Try to extract decade from filename
-                        decade_match = re.search(
-                            r"((?:19|20)\d0)s", self.match_filename
+                    # Try to extract decade from filename
+                    decade_match = re.search(
+                        r"((?:19|20)\d0)s", self.match_filename
+                    )
+                    if decade_match:
+                        decade = decade_match.group(1) + "s"
+                    else:
+                        year_match = re.search(
+                            r"(19\d{2}|20\d{2})", self.match_filename
                         )
-                        if decade_match:
-                            decade = decade_match.group(1) + "s"
+                        if year_match:
+                            year = int(year_match.group(1))
+                            decade = f"{(year // 10)}0s"
                         else:
-                            year_match = re.search(
-                                r"(19\d{2}|20\d{2})", self.match_filename
-                            )
-                            if year_match:
-                                year = int(year_match.group(1))
-                                decade = f"{(year // 10)}0s"
-                            else:
-                                decade = "2000s"  # Default fallback
+                            decade = "2000s"  # Default fallback
 
-                    # Apply fallback logic for state if it's unknown
-                    if state == "Unknown" and self.match_filename:
-                        # Check for state names in filename
-                        states = {
-                            "AL": "Alabama",
-                            "AK": "Alaska",
-                            "AZ": "Arizona",
-                            "AR": "Arkansas",
-                            "CA": "California",
-                            "CO": "Colorado",
-                            "CT": "Connecticut",
-                            "DE": "Delaware",
-                            "FL": "Florida",
-                            "GA": "Georgia",
-                            "HI": "Hawaii",
-                            "ID": "Idaho",
-                            "IL": "Illinois",
-                            "IN": "Indiana",
-                            "IA": "Iowa",
-                            "KS": "Kansas",
-                            "KY": "Kentucky",
-                            "LA": "Louisiana",
-                            "ME": "Maine",
-                            "MD": "Maryland",
-                            "MA": "Massachusetts",
-                            "MI": "Michigan",
-                            "MN": "Minnesota",
-                            "MS": "Mississippi",
-                            "MO": "Missouri",
-                            "MT": "Montana",
-                            "NE": "Nebraska",
-                            "NV": "Nevada",
-                            "NH": "New Hampshire",
-                            "NJ": "New Jersey",
-                            "NM": "New Mexico",
-                            "NY": "New York",
-                            "NC": "North Carolina",
-                            "ND": "North Dakota",
-                            "OH": "Ohio",
-                            "OK": "Oklahoma",
-                            "OR": "Oregon",
-                            "PA": "Pennsylvania",
-                            "RI": "Rhode Island",
-                            "SC": "South Carolina",
-                            "SD": "South Dakota",
-                            "TN": "Tennessee",
-                            "TX": "Texas",
-                            "UT": "Utah",
-                            "VT": "Vermont",
-                            "VA": "Virginia",
-                            "WA": "Washington",
-                            "WV": "West Virginia",
-                            "WI": "Wisconsin",
-                            "WY": "Wyoming",
-                        }
-
-                        # Check for state names or abbreviations in the filename
-                        for abbr, name in states.items():
-                            if (
-                                abbr in self.match_filename.upper()
-                                or name.lower() in self.match_filename.lower()
-                            ):
-                                state = name
-                                break
-                        else:
-                            # If no state found, default to California
-                            state = "California"
-
-                    self._match_details = {
-                        "filename": self.match_filename,
-                        "is_claimed": False,
-                        "decade": decade,
-                        "state": state,
-                        "similarity": (
-                            self.similarity
-                            if self.similarity is not None
-                            else random.randint(30, 60)
-                        ),  # Use more realistic similarity values
+                # Apply fallback logic for state
+                if self.match_filename:
+                    # Check for state names in filename
+                    states = {
+                        "AL": "Alabama",
+                        "AK": "Alaska",
+                        "AZ": "Arizona",
+                        "AR": "Arkansas",
+                        "CA": "California",
+                        "CO": "Colorado",
+                        "CT": "Connecticut",
+                        "DE": "Delaware",
+                        "FL": "Florida",
+                        "GA": "Georgia",
+                        "HI": "Hawaii",
+                        "ID": "Idaho",
+                        "IL": "Illinois",
+                        "IN": "Indiana",
+                        "IA": "Iowa",
+                        "KS": "Kansas",
+                        "KY": "Kentucky",
+                        "LA": "Louisiana",
+                        "ME": "Maine",
+                        "MD": "Maryland",
+                        "MA": "Massachusetts",
+                        "MI": "Michigan",
+                        "MN": "Minnesota",
+                        "MS": "Mississippi",
+                        "MO": "Missouri",
+                        "MT": "Montana",
+                        "NE": "Nebraska",
+                        "NV": "Nevada",
+                        "NH": "New Hampshire",
+                        "NJ": "New Jersey",
+                        "NM": "New Mexico",
+                        "NY": "New York",
+                        "NC": "North Carolina",
+                        "ND": "North Dakota",
+                        "OH": "Ohio",
+                        "OK": "Oklahoma",
+                        "OR": "Oregon",
+                        "PA": "Pennsylvania",
+                        "RI": "Rhode Island",
+                        "SC": "South Carolina",
+                        "SD": "South Dakota",
+                        "TN": "Tennessee",
+                        "TX": "Texas",
+                        "UT": "Utah",
+                        "VT": "Vermont",
+                        "VA": "Virginia",
+                        "WA": "Washington",
+                        "WV": "West Virginia",
+                        "WI": "Wisconsin",
+                        "WY": "Wyoming",
                     }
-                else:
-                    # Even if face isn't found in database, try to extract metadata from filename
-                    decade = "Unknown"
-                    state = "Unknown"
 
-                    # Apply fallback logic for decade
-                    if self.match_filename:
-                        import re
+                    # Check for state names or abbreviations in the filename
+                    for abbr, name in states.items():
+                        if (
+                            abbr in self.match_filename.upper()
+                            or name.lower() in self.match_filename.lower()
+                        ):
+                            state = name
+                            break
+                    else:
+                        # If no state found, default to California
+                        state = "California"
 
-                        # Try to extract decade from filename
-                        decade_match = re.search(
-                            r"((?:19|20)\d0)s", self.match_filename
-                        )
-                        if decade_match:
-                            decade = decade_match.group(1) + "s"
-                        else:
-                            year_match = re.search(
-                                r"(19\d{2}|20\d{2})", self.match_filename
-                            )
-                            if year_match:
-                                year = int(year_match.group(1))
-                                decade = f"{(year // 10)}0s"
-                            else:
-                                decade = "2000s"  # Default fallback
-
-                    # Apply fallback logic for state
-                    if self.match_filename:
-                        # Check for state names in filename
-                        states = {
-                            "AL": "Alabama",
-                            "AK": "Alaska",
-                            "AZ": "Arizona",
-                            "AR": "Arkansas",
-                            "CA": "California",
-                            "CO": "Colorado",
-                            "CT": "Connecticut",
-                            "DE": "Delaware",
-                            "FL": "Florida",
-                            "GA": "Georgia",
-                            "HI": "Hawaii",
-                            "ID": "Idaho",
-                            "IL": "Illinois",
-                            "IN": "Indiana",
-                            "IA": "Iowa",
-                            "KS": "Kansas",
-                            "KY": "Kentucky",
-                            "LA": "Louisiana",
-                            "ME": "Maine",
-                            "MD": "Maryland",
-                            "MA": "Massachusetts",
-                            "MI": "Michigan",
-                            "MN": "Minnesota",
-                            "MS": "Mississippi",
-                            "MO": "Missouri",
-                            "MT": "Montana",
-                            "NE": "Nebraska",
-                            "NV": "Nevada",
-                            "NH": "New Hampshire",
-                            "NJ": "New Jersey",
-                            "NM": "New Mexico",
-                            "NY": "New York",
-                            "NC": "North Carolina",
-                            "ND": "North Dakota",
-                            "OH": "Ohio",
-                            "OK": "Oklahoma",
-                            "OR": "Oregon",
-                            "PA": "Pennsylvania",
-                            "RI": "Rhode Island",
-                            "SC": "South Carolina",
-                            "SD": "South Dakota",
-                            "TN": "Tennessee",
-                            "TX": "Texas",
-                            "UT": "Utah",
-                            "VT": "Vermont",
-                            "VA": "Virginia",
-                            "WA": "Washington",
-                            "WV": "West Virginia",
-                            "WI": "Wisconsin",
-                            "WY": "Wyoming",
-                        }
-
-                        # Check for state names or abbreviations in the filename
-                        for abbr, name in states.items():
-                            if (
-                                abbr in self.match_filename.upper()
-                                or name.lower() in self.match_filename.lower()
-                            ):
-                                state = name
-                                break
-                        else:
-                            # If no state found, default to California
-                            state = "California"
-
-                    self._match_details = {
-                        "filename": self.match_filename,
-                        "is_claimed": False,
-                        "decade": decade,
-                        "state": state,
-                        "similarity": (
-                            self.similarity
-                            if self.similarity is not None
-                            else random.randint(30, 60)
-                        ),  # Use more realistic similarity values
-                    }
+                self._match_details = {
+                    "filename": self.match_filename,
+                    "is_claimed": False,
+                    "decade": decade,
+                    "state": state,
+                    "similarity": (
+                        self.similarity
+                        if self.similarity is not None
+                        else random.randint(30, 60)
+                    ),  # Use more realistic similarity values
+                }
 
         return self._match_details
 

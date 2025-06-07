@@ -14,7 +14,9 @@ from .face import Face
 from .follow import Follow
 # from .notification import Notification  # Removed, handled in social/notification.py
 # from .reaction import Reaction  # Removed, handled in social/interaction.py
-from .social import Post, Comment, Like, ClaimedProfile
+from .social.post import Post, PostImage, PostReaction
+from .social.comment import Comment
+from .social.like import Like
 from .user_match import UserMatch
 
 # Make models available at the package level
@@ -28,6 +30,7 @@ __all__ = [
     'Post',
     'Comment',
     'Like',
-    'ClaimedProfile',
-    'UserMatch'
+    'UserMatch',
+    'PostImage',
+    'PostReaction'
 ]

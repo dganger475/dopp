@@ -38,6 +38,7 @@ RUN apt-get update && \
     unzip \
     nodejs \
     npm \
+    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy frontend files and build
@@ -83,4 +84,8 @@ USER appuser
 EXPOSE 5000
 
 # Run the startup script
-CMD ["python", "start.py"] 
+CMD ["python", "start.py"]
+
+# Start Redis server in the background
+RUN mkdir -p /var/run/redis && \
+    chown -R appuser:appuser /var/run/redis 

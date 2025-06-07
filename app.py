@@ -233,14 +233,12 @@ def create_app(config_object=None):
          max_age=86400)  # 24 hours
     logger.info("CORS setup complete")
     
-    # Configure Flask-Limiter with file storage
+    # Configure Flask-Limiter
     logger.info("Configuring rate limiter...")
-    limiter.init_app(
-        app,
-        storage_uri="file:///app/data/rate_limits",
-        default_limits=["200 per day", "50 per hour"],
-        strategy="fixed-window"
-    )
+    app.config['RATELIMIT_STORAGE_URL'] = "file:///app/data/rate_limits"
+    app.config['RATELIMIT_DEFAULT'] = ["200 per day", "50 per hour"]
+    app.config['RATELIMIT_STRATEGY'] = "fixed-window"
+    limiter.init_app(app)
     logger.info("Rate limiter configured")
     
     # Add health check endpoint

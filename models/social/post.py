@@ -16,16 +16,19 @@ logger = logging.getLogger(__name__)
 class Post(db.Model):
     """Post model for storing user posts."""
     __tablename__ = 'posts'
+    __table_args__ = (
+        db.Index('idx_posts_user_id', 'user_id'),
+    )
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text)
     visibility = db.Column(db.String(20), default='public')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', backref='posts')
+    user = db.relationship('User', backref=db.backref('posts', lazy='dynamic'))
     images = db.relationship('PostImage', backref='post', cascade='all, delete-orphan')
     reactions = db.relationship('PostReaction', backref='post', cascade='all, delete-orphan')
     comments = db.relationship('Comment', backref='post', cascade='all, delete-orphan')
@@ -115,7 +118,7 @@ class PostImage(db.Model):
     __tablename__ = 'post_images'
 
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     image_url = db.Column(db.String(255), nullable=False)
     caption = db.Column(db.String(255))
     order = db.Column(db.Integer, default=0)
