@@ -227,10 +227,11 @@ def create_app(config_object=None):
                  "http://127.0.0.1:5001", 
                  "https://doppleganger.us",
                  "https://dopple503.fly.dev"],
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cache-Control", "X-Csrf-Token", "X-CSRFToken"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
          expose_headers=["Content-Type", "Authorization"],
-         max_age=86400)  # 24 hours
+         max_age=86400,  # 24 hours
+         send_wildcard=False)  # Don't send wildcard for credentials
     logger.info("CORS setup complete")
     
     # Configure Flask-Limiter

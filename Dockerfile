@@ -41,6 +41,12 @@ RUN apt-get update && \
     redis-server \
     && rm -rf /var/lib/apt/lists/*
 
+# Create Redis directory
+RUN mkdir -p /var/lib/redis && chown -R redis:redis /var/lib/redis
+
+# Copy Redis configuration
+COPY redis.conf /etc/redis/redis.conf
+
 # Copy frontend files and build
 COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
@@ -83,9 +89,5 @@ USER appuser
 # Expose the port
 EXPOSE 5000
 
-# Run the startup script
-CMD ["python", "start.py"]
-
-# Start Redis server in the background
-RUN mkdir -p /var/run/redis && \
-    chown -R appuser:appuser /var/run/redis 
+# Start Redis and the application
+CMD service redis-server start && gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app 

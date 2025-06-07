@@ -68,7 +68,7 @@ def init_extensions(app):
                 'img-src': "'self' data: https:",
                 'script-src': "'self' 'unsafe-inline' 'unsafe-eval'",
                 'style-src': "'self' 'unsafe-inline'",
-                'connect-src': "'self' https: wss:",
+                'connect-src': "'self' https: wss: http:",
                 'font-src': "'self' data: https:",
                 'frame-src': "'self'",
                 'media-src': "'self' https:",
@@ -108,15 +108,17 @@ def init_extensions(app):
         is_production = app.config.get('FLASK_ENV') == 'production'
         
         if is_production:
-            # Use Redis in production
-            app.config['RATELIMIT_STORAGE_URL'] = app.config.get('REDIS_URL', 'redis://localhost:6379/0')
+            # Use Redis for rate limiting in production
+            app.config['RATELIMIT_STORAGE_URL'] = 'redis://localhost:6379/0'
+            app.config['RATELIMIT_STRATEGY'] = 'fixed-window'
+            app.config['RATELIMIT_DEFAULT'] = ["200 per day", "50 per hour"]
             app.config['RATELIMIT_STORAGE_OPTIONS'] = {
                 'socket_timeout': 5,
                 'socket_connect_timeout': 5,
                 'retry_on_timeout': True
             }
         else:
-            # Use memory storage in development
+            # Use memory storage for development
             app.config['RATELIMIT_STORAGE_URL'] = 'memory://'
         
         limiter.init_app(app)

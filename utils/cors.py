@@ -25,6 +25,7 @@ def setup_cors(app):
         'http://127.0.0.1:8080',
         # Production domain
         'https://doppleganger.us',
+        'https://dopple503.fly.dev',
         # Allow ngrok URLs for beta testing
         'https://*.ngrok.io',
         'https://*.ngrok-free.app'
